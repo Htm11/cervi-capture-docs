@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -38,7 +37,6 @@ const PatientRegistration = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Initial form state
   const [patientData, setPatientData] = useState<PatientData>({
     firstName: '',
     lastName: '',
@@ -52,33 +50,27 @@ const PatientRegistration = () => {
     lastVisaExamResults: ''
   });
 
-  // Form validation state
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Confirmation checkboxes
   const [confirmVerified, setConfirmVerified] = useState(false);
   const [confirmInformed, setConfirmInformed] = useState(false);
 
-  // Check authentication
   React.useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
 
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setPatientData(prev => ({ ...prev, [id]: value }));
     
-    // Clear error for this field if it exists
     if (errors[id]) {
       setErrors(prev => ({ ...prev, [id]: '' }));
     }
   };
 
-  // Date of birth change handler
   const handleDateChange = (date: Date | undefined) => {
     setPatientData(prev => ({ ...prev, dateOfBirth: date }));
     if (errors.dateOfBirth) {
@@ -86,29 +78,24 @@ const PatientRegistration = () => {
     }
   };
 
-  // Form validation
   const validateForm = () => {
     const newErrors: FormErrors = {};
     const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
     
-    // Check required fields
     requiredFields.forEach(field => {
       if (!patientData[field as keyof PatientData]) {
         newErrors[field] = 'This field is required';
       }
     });
     
-    // Check phone number format
     if (patientData.phoneNumber && !/^\+?[0-9]{10,15}$/.test(patientData.phoneNumber)) {
       newErrors.phoneNumber = 'Please enter a valid phone number';
     }
     
-    // Check date of birth
     if (!patientData.dateOfBirth) {
       newErrors.dateOfBirth = 'Date of birth is required';
     }
     
-    // Check confirmation checkboxes
     if (!confirmVerified) {
       newErrors.confirmVerified = 'You must confirm that patient information is verified';
     }
@@ -121,7 +108,6 @@ const PatientRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -136,9 +122,7 @@ const PatientRegistration = () => {
     
     setIsSubmitting(true);
     
-    // Simulate API call
     setTimeout(() => {
-      // Store patient data in local storage for demo purposes
       localStorage.setItem('currentPatient', JSON.stringify(patientData));
       
       setIsSubmitting(false);
@@ -147,7 +131,6 @@ const PatientRegistration = () => {
         description: "Proceeding to image capture",
       });
       
-      // Navigate to camera page
       navigate('/camera');
     }, 1500);
   };
@@ -156,7 +139,6 @@ const PatientRegistration = () => {
     <Layout>
       <div className="pb-16">
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Basic Information */}
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -232,7 +214,6 @@ const PatientRegistration = () => {
             </div>
           </section>
           
-          {/* Medical Information */}
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Medical Information</h2>
             <div className="space-y-4">
@@ -292,7 +273,6 @@ const PatientRegistration = () => {
             </div>
           </section>
           
-          {/* Confirmations */}
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Confirmations</h2>
             <div className="space-y-4">
@@ -342,26 +322,24 @@ const PatientRegistration = () => {
             </div>
           </section>
           
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-border">
-            <div className="max-w-screen-md mx-auto">
-              <Button 
-                type="submit" 
-                className="w-full bg-cervi-500 hover:bg-cervi-600 text-white" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Registering patient...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="mr-2 h-4 w-4" />
-                    Proceed to Image Capture
-                  </>
-                )}
-              </Button>
-            </div>
+          <div className="py-4">
+            <Button 
+              type="submit" 
+              className="w-full bg-cervi-500 hover:bg-cervi-600 text-white" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registering patient...
+                </>
+              ) : (
+                <>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Proceed to Image Capture
+                </>
+              )}
+            </Button>
           </div>
         </form>
       </div>
