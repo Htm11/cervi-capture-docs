@@ -37,40 +37,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  // Mock login function - in a real app, this would connect to a backend
+  // Mock login function - modified to always succeed for testing
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate API call delay (reduced for testing)
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     try {
-      // For demo purposes, accept any non-empty email/password
-      if (email && password) {
-        // Mocked doctor data - would come from your API
-        const mockDoctor: Doctor = {
-          id: '123456',
-          name: 'Dr. ' + email.split('@')[0],
-          email
-        };
-        
-        setCurrentDoctor(mockDoctor);
-        localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
-        
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${mockDoctor.name}`,
-        });
-        
-        return true;
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password",
-          variant: "destructive",
-        });
-        return false;
-      }
+      // For testing, always succeed regardless of input
+      // Use provided email or a default
+      const userEmail = email || 'test@example.com';
+      
+      // Mocked doctor data - would come from your API
+      const mockDoctor: Doctor = {
+        id: '123456',
+        name: 'Dr. ' + userEmail.split('@')[0],
+        email: userEmail
+      };
+      
+      setCurrentDoctor(mockDoctor);
+      localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${mockDoctor.name}`,
+      });
+      
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       toast({

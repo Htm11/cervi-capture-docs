@@ -24,7 +24,7 @@ const FormField = ({
   label,
   type = 'text',
   placeholder,
-  required = false,
+  required = false, // Default is false to make all fields optional
   value,
   onChange,
   error,
