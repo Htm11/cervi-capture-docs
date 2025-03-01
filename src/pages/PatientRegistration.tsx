@@ -157,41 +157,49 @@ const PatientRegistration = () => {
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                id="firstName"
-                label="First Name"
-                placeholder="Enter first name"
-                required
-                value={patientData.firstName}
-                onChange={handleChange}
-                error={errors.firstName}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <input
+                  id="firstName"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter first name"
+                  value={patientData.firstName}
+                  onChange={handleChange}
+                />
+                {errors.firstName && <p className="text-destructive text-xs">{errors.firstName}</p>}
+              </div>
               
-              <FormField
-                id="lastName"
-                label="Last Name"
-                placeholder="Enter last name"
-                required
-                value={patientData.lastName}
-                onChange={handleChange}
-                error={errors.lastName}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <input
+                  id="lastName"
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter last name"
+                  value={patientData.lastName}
+                  onChange={handleChange}
+                />
+                {errors.lastName && <p className="text-destructive text-xs">{errors.lastName}</p>}
+              </div>
               
-              <FormField
-                id="phoneNumber"
-                label="Phone Number"
-                type="tel"
-                placeholder="e.g. +1234567890"
-                required
-                value={patientData.phoneNumber}
-                onChange={handleChange}
-                error={errors.phoneNumber}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="e.g. +1234567890"
+                  value={patientData.phoneNumber}
+                  onChange={handleChange}
+                />
+                {errors.phoneNumber && <p className="text-destructive text-xs">{errors.phoneNumber}</p>}
+              </div>
               
               <div className="space-y-2">
                 <Label 
                   htmlFor="dateOfBirth" 
-                  className="text-sm font-medium after:content-['*'] after:ml-0.5 after:text-destructive"
+                  className="text-sm font-medium"
                 >
                   Date of Birth
                 </Label>
