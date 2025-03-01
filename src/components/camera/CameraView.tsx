@@ -49,7 +49,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
         console.log('Browser detection:', { isIOS, isSafari, isIOSChrome });
         
         // iOS-specific constraints
-        let constraints = {
+        let constraints: MediaStreamConstraints = {
           audio: false,
           video: {
             facingMode: { ideal: 'environment' }
@@ -60,7 +60,9 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
         if (isIOS) {
           constraints = {
             audio: false,
-            video: true
+            video: {
+              facingMode: 'environment'
+            }
           };
         }
         
