@@ -87,9 +87,35 @@ const Camera = () => {
     const track = stream.getVideoTracks()[0];
     
     try {
-      if (track.getCapabilities().torch) {
+      // Check if flashlight is available using the ImageCapture API
+      if ('ImageCapture' in window) {
+        const imageCapture = new (window as any).ImageCapture(track);
+        
+        if (imageCapture.getPhotoCapabilities) {
+          const capabilities = await imageCapture.getPhotoCapabilities();
+          
+          if (capabilities && capabilities.fillLightMode && capabilities.fillLightMode.includes('flash')) {
+            // Some devices support this method
+            const flashMode = isFlashlightOn ? 'off' : 'flash';
+            await imageCapture.setOptions({ fillLightMode: flashMode });
+            setIsFlashlightOn(!isFlashlightOn);
+            
+            toast({
+              title: isFlashlightOn ? "Flashlight Off" : "Flashlight On",
+              duration: 1000,
+            });
+            
+            return;
+          }
+        }
+      }
+      
+      // Fallback method - try generic advanced constraints
+      // This works on some Android devices
+      try {
+        // Using 'any' type for now as the torch property isn't standard in the TypeScript MediaTrackConstraints type
         await track.applyConstraints({
-          advanced: [{ torch: !isFlashlightOn }]
+          advanced: [{ fillLight: !isFlashlightOn ? 'flash' : 'off' } as any]
         });
         setIsFlashlightOn(!isFlashlightOn);
         
@@ -97,13 +123,18 @@ const Camera = () => {
           title: isFlashlightOn ? "Flashlight Off" : "Flashlight On",
           duration: 1000,
         });
-      } else {
-        toast({
-          title: "Flashlight not available",
-          description: "Your device does not support flashlight control",
-          variant: "destructive",
-        });
+        
+        return;
+      } catch (e) {
+        console.error('Fallback flashlight method failed:', e);
       }
+      
+      // If we get here, flashlight isn't available
+      toast({
+        title: "Flashlight not available",
+        description: "Your device does not support flashlight control",
+        variant: "destructive",
+      });
     } catch (error) {
       console.error('Error toggling flashlight:', error);
       toast({
