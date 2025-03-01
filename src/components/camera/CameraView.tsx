@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Loader2, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,6 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraInitializing, setIsCameraInitializing] = useState(true);
   
-  // Initialize camera
   useEffect(() => {
     let isMounted = true;
     
@@ -43,28 +41,17 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
         }
         
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const isIOSChrome = isIOS && /CriOS/.test(navigator.userAgent);
         
-        console.log('Browser detection:', { isIOS, isSafari, isIOSChrome });
+        console.log('Browser detection:', { isIOS });
         
-        // iOS-specific constraints
-        let constraints: MediaStreamConstraints = {
+        const constraints: MediaStreamConstraints = {
           audio: false,
           video: {
-            facingMode: { ideal: 'environment' }
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         };
-        
-        // For iOS Safari and Chrome, we need simpler constraints
-        if (isIOS) {
-          constraints = {
-            audio: false,
-            video: {
-              facingMode: 'environment'
-            }
-          };
-        }
         
         console.log('Requesting camera with constraints:', constraints);
         
@@ -73,77 +60,38 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
           
           if (!isMounted) return;
           
-          console.log('Camera access granted with initial constraints');
+          console.log('Camera access granted');
           
-          // Now try to get environment facing camera on mobile if not iOS
-          // (iOS already handled differently above)
-          if (mediaStream && /Android/.test(navigator.userAgent)) {
-            try {
-              const betterConstraints = {
-                audio: false,
-                video: {
-                  facingMode: { ideal: 'environment' },
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 }
-                }
-              };
-              
-              console.log('Android: Attempting to get better camera with constraints:', betterConstraints);
-              
-              mediaStream.getTracks().forEach(track => track.stop());
-              
-              const betterStream = await navigator.mediaDevices.getUserMedia(betterConstraints);
-              setStream(betterStream);
-              
-              if (videoRef.current) {
-                videoRef.current.srcObject = betterStream;
-              }
-            } catch (err) {
-              console.warn('Could not get environment camera, falling back to initial stream:', err);
-              
-              setStream(mediaStream);
-              if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-              }
-            }
-          } else {
-            // Use the initial stream
-            setStream(mediaStream);
-            if (videoRef.current) {
-              videoRef.current.srcObject = mediaStream;
-            }
-          }
+          setStream(mediaStream);
           
-          // Handle video playback with special care for iOS
           if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+            
+            videoRef.current.setAttribute('playsinline', 'true');
+            videoRef.current.setAttribute('autoplay', 'true');
+            videoRef.current.setAttribute('muted', 'true');
+            
             videoRef.current.onloadedmetadata = () => {
-              if (!isMounted || !videoRef.current) return;
-              
-              // On iOS, need to set playsinline explicitly in JS as well
-              if (isIOS) {
-                videoRef.current.setAttribute('playsinline', 'true');
-                videoRef.current.setAttribute('webkit-playsinline', 'true');
-              }
+              if (!videoRef.current || !isMounted) return;
               
               videoRef.current.play()
                 .then(() => {
-                  console.log('Video playback started successfully');
+                  console.log('Video playback started');
                   setHasCamera(true);
                   setCameraError(null);
                 })
                 .catch(e => {
                   console.error('Error playing video:', e);
                   
-                  // Special handling for iOS autoplay restrictions
                   if (isIOS) {
-                    setCameraError('iOS requires user interaction to start video. Please try tapping the screen or refreshing the page.');
+                    setCameraError('iOS requires user interaction. Please tap the screen or reload the page and grant camera permissions when prompted.');
                     toast({
                       title: "Camera permission issue",
-                      description: "iOS requires explicit permission. Please check your browser settings.",
+                      description: "Please check your browser settings and try again.",
                       variant: "destructive",
                     });
                   } else {
-                    setCameraError('Could not start video playback. Please refresh and try again.');
+                    setCameraError('Could not start video playback. Please reload and try again.');
                   }
                 });
             };
@@ -153,18 +101,17 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
           
           if (!isMounted) return;
           
-          // Special message for iOS
           if (isIOS) {
-            setCameraError('iOS camera access denied. Please ensure camera permissions are enabled in Settings > Safari > Camera (or Chrome > Camera).');
+            setCameraError('Camera access denied. For iOS: Go to Settings > Safari > Camera (or Chrome > Camera) and enable access.');
           } else {
-            setCameraError('Camera access denied or not available. Please check your permissions and try again.');
+            setCameraError('Camera access denied. Please check your browser permissions.');
           }
           
           setHasCamera(false);
           
           toast({
             title: "Camera access denied",
-            description: "Please enable camera access in your browser settings and reload the page.",
+            description: "Please enable camera access in your browser settings and reload.",
             variant: "destructive",
           });
         }
@@ -196,7 +143,6 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
     };
   }, [toast]);
   
-  // Toggle flashlight
   const toggleFlashlight = async () => {
     if (!stream) return;
     
@@ -210,13 +156,10 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
       if (capabilities && 'torch' in capabilities) {
         const newFlashlightState = !isFlashlightOn;
         
-        // Use correct type for advanced constraints
         await videoTrack.applyConstraints({
           advanced: [{ 
-            // Cast to any to avoid TypeScript error since torch isn't in the standard type
-            // This is actually supported on many mobile devices despite not being in the type
-            ...(({'torch': newFlashlightState} as any))
-          }]
+            torch: newFlashlightState
+          } as MediaTrackConstraintSet]
         });
         
         setIsFlashlightOn(newFlashlightState);
@@ -241,7 +184,6 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
     }
   };
   
-  // Take photo
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     
@@ -255,13 +197,11 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
     if (context) {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Turn off flashlight if it's on
       if (isFlashlightOn) {
         toggleFlashlight();
       }
       
-      // Get image data and pass it up
-      const imageDataUrl = canvas.toDataURL('image/jpeg');
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       onPhotoTaken(imageDataUrl);
     }
   };
