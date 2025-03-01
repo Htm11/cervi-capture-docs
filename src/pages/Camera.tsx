@@ -44,6 +44,7 @@ const Camera = () => {
   const [patientData, setPatientData] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(3); // Default to "Before Acetic"
   const [showAceticAcidDialog, setShowAceticAcidDialog] = useState(false);
+  const [isCameraInitializing, setIsCameraInitializing] = useState(true);
   
   // Check authentication and get patient data
   useEffect(() => {
@@ -75,14 +76,38 @@ const Camera = () => {
     }
   }, [isAuthenticated, navigate, toast]);
   
-  // Initialize camera
+  // Clean up camera resources when component unmounts
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => {
+          console.log('Stopping track:', track);
+          track.stop();
+        });
+      }
+    };
+  }, [stream]);
+  
+  // Initialize camera - improved implementation for mobile compatibility
   useEffect(() => {
     const initCamera = async () => {
       try {
+        setIsCameraInitializing(true);
+        
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('Camera API not supported in this browser');
         }
         
+        // First stop any existing streams
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+        
+        // Mobile-friendly constraints
         const constraints = {
           video: {
             facingMode: 'environment', // Use back camera on mobile
@@ -93,41 +118,74 @@ const Camera = () => {
         };
         
         console.log('Attempting to access camera with constraints:', constraints);
-        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('Camera access granted:', mediaStream);
         
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.onloadedmetadata = () => {
-            if (videoRef.current) {
-              videoRef.current.play().catch(e => {
-                console.error('Error playing video:', e);
-                setCameraError('Failed to start video stream');
-              });
-            }
+        try {
+          const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log('Camera access granted:', mediaStream);
+          
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+            
+            // Wait for video to be ready before playing
+            videoRef.current.onloadedmetadata = () => {
+              if (videoRef.current) {
+                videoRef.current.play()
+                  .then(() => {
+                    console.log('Video playback started successfully');
+                    setHasCamera(true);
+                    setCameraError(null);
+                  })
+                  .catch(e => {
+                    console.error('Error playing video:', e);
+                    setCameraError('Failed to start video playback. Please try again.');
+                  });
+              }
+            };
+            
+            setStream(mediaStream);
+          }
+        } catch (err) {
+          console.error('Initial camera access failed:', err);
+          
+          // Fallback to basic video constraints if the initial attempt fails
+          const fallbackConstraints = { 
+            video: true, 
+            audio: false 
           };
-          setStream(mediaStream);
-          setHasCamera(true);
-          setCameraError(null);
+          
+          console.log('Trying fallback constraints:', fallbackConstraints);
+          const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+          
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+            videoRef.current.onloadedmetadata = () => {
+              if (videoRef.current) {
+                videoRef.current.play()
+                  .then(() => {
+                    console.log('Video playback started with fallback constraints');
+                    setHasCamera(true);
+                    setCameraError(null);
+                  })
+                  .catch(e => {
+                    console.error('Error playing video with fallback:', e);
+                    setCameraError('Failed to start video stream with fallback settings');
+                  });
+              }
+            };
+            
+            setStream(fallbackStream);
+          }
         }
       } catch (error) {
-        console.error('Error accessing camera:', error);
+        console.error('All camera access attempts failed:', error);
         setCameraError('Camera access denied or not available. Please check your permissions.');
         setHasCamera(false);
+      } finally {
+        setIsCameraInitializing(false);
       }
     };
     
     initCamera();
-    
-    // Cleanup
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          console.log('Stopping track:', track);
-          track.stop();
-        });
-      }
-    };
   }, []);
   
   // Toggle flashlight (if available)
@@ -135,48 +193,56 @@ const Camera = () => {
     if (!stream) return;
     
     const track = stream.getVideoTracks()[0];
+    if (!track) return;
     
     try {
-      // Check if flashlight is available using the ImageCapture API
-      if ('ImageCapture' in window) {
-        const imageCapture = new (window as any).ImageCapture(track);
+      // Try the standard approach first (works on some Android devices)
+      try {
+        const capabilities = track.getCapabilities();
+        console.log('Track capabilities:', capabilities);
         
-        if (imageCapture.getPhotoCapabilities) {
-          const capabilities = await imageCapture.getPhotoCapabilities();
+        // Check if torch is supported
+        if (capabilities && 'torch' in capabilities) {
+          const torchOn = !isFlashlightOn;
+          await track.applyConstraints({
+            advanced: [{ torch: torchOn } as any]
+          });
           
-          if (capabilities && capabilities.fillLightMode && capabilities.fillLightMode.includes('flash')) {
-            // Some devices support this method
-            const flashMode = isFlashlightOn ? 'off' : 'flash';
-            await imageCapture.setOptions({ fillLightMode: flashMode });
-            setIsFlashlightOn(!isFlashlightOn);
-            
-            toast({
-              title: isFlashlightOn ? "Flashlight Off" : "Flashlight On",
-              duration: 1000,
-            });
-            
-            return;
-          }
+          setIsFlashlightOn(torchOn);
+          toast({
+            title: torchOn ? "Flashlight On" : "Flashlight Off",
+            duration: 1000,
+          });
+          return;
         }
+      } catch (e) {
+        console.error('Standard flashlight method failed:', e);
       }
       
-      // Fallback method - try generic advanced constraints
-      // This works on some Android devices
-      try {
-        // Using 'any' type for now as the torch property isn't standard in the TypeScript MediaTrackConstraints type
-        await track.applyConstraints({
-          advanced: [{ torch: !isFlashlightOn } as any]
-        });
-        setIsFlashlightOn(!isFlashlightOn);
-        
-        toast({
-          title: isFlashlightOn ? "Flashlight Off" : "Flashlight On",
-          duration: 1000,
-        });
-        
-        return;
-      } catch (e) {
-        console.error('Fallback flashlight method failed:', e);
+      // Try ImageCapture API (works on some browsers)
+      if ('ImageCapture' in window) {
+        try {
+          const imageCapture = new (window as any).ImageCapture(track);
+          
+          if (imageCapture.getPhotoCapabilities) {
+            const capabilities = await imageCapture.getPhotoCapabilities();
+            
+            if (capabilities && capabilities.fillLightMode && 
+                capabilities.fillLightMode.includes('flash')) {
+              const flashMode = isFlashlightOn ? 'off' : 'flash';
+              await imageCapture.setOptions({ fillLightMode: flashMode });
+              
+              setIsFlashlightOn(!isFlashlightOn);
+              toast({
+                title: isFlashlightOn ? "Flashlight Off" : "Flashlight On",
+                duration: 1000,
+              });
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('ImageCapture flashlight method failed:', e);
+        }
       }
       
       // If we get here, flashlight isn't available
@@ -298,7 +364,12 @@ const Camera = () => {
         </div>
         
         <div className="relative mb-4 rounded-xl overflow-hidden bg-black aspect-[3/4] flex items-center justify-center shadow-lg">
-          {hasCamera ? (
+          {isCameraInitializing ? (
+            <div className="text-white text-center flex flex-col items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin mb-2" />
+              <p>Initializing camera...</p>
+            </div>
+          ) : hasCamera ? (
             <>
               <video
                 ref={videoRef}
@@ -348,7 +419,7 @@ const Camera = () => {
               {cameraError ? (
                 <p>{cameraError}</p>
               ) : (
-                <p>Initializing camera...</p>
+                <p>Camera not available</p>
               )}
             </div>
           )}
@@ -359,7 +430,7 @@ const Camera = () => {
             <>
               <Button
                 className="w-full bg-cervi-500 hover:bg-cervi-600 text-white h-14 text-lg"
-                disabled={!hasCamera || !!cameraError}
+                disabled={!hasCamera || !!cameraError || isCameraInitializing}
                 onClick={takePhoto}
               >
                 <CameraIcon className="mr-2 h-5 w-5" />
