@@ -42,24 +42,40 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
           videoRef.current.srcObject = null;
         }
         
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        console.log('Browser detected as Safari:', isSafari);
+        const isIOSChrome = isIOS && /CriOS/.test(navigator.userAgent);
         
+        console.log('Browser detection:', { isIOS, isSafari, isIOSChrome });
+        
+        // iOS-specific constraints
         let constraints = {
           audio: false,
-          video: true
+          video: {
+            facingMode: { ideal: 'environment' }
+          }
         };
         
-        console.log('Requesting camera with initial constraints:', constraints);
+        // For iOS Safari and Chrome, we need simpler constraints
+        if (isIOS) {
+          constraints = {
+            audio: false,
+            video: true
+          };
+        }
+        
+        console.log('Requesting camera with constraints:', constraints);
         
         try {
           const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
           
           if (!isMounted) return;
           
-          console.log('Initial camera access granted');
+          console.log('Camera access granted with initial constraints');
           
-          if (mediaStream && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          // Now try to get environment facing camera on mobile if not iOS
+          // (iOS already handled differently above)
+          if (mediaStream && /Android/.test(navigator.userAgent)) {
             try {
               const betterConstraints = {
                 audio: false,
@@ -70,7 +86,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
                 }
               };
               
-              console.log('Attempting to get better camera with constraints:', betterConstraints);
+              console.log('Android: Attempting to get better camera with constraints:', betterConstraints);
               
               mediaStream.getTracks().forEach(track => track.stop());
               
@@ -89,15 +105,23 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
               }
             }
           } else {
+            // Use the initial stream
             setStream(mediaStream);
             if (videoRef.current) {
               videoRef.current.srcObject = mediaStream;
             }
           }
           
+          // Handle video playback with special care for iOS
           if (videoRef.current) {
             videoRef.current.onloadedmetadata = () => {
               if (!isMounted || !videoRef.current) return;
+              
+              // On iOS, need to set playsinline explicitly in JS as well
+              if (isIOS) {
+                videoRef.current.setAttribute('playsinline', 'true');
+                videoRef.current.setAttribute('webkit-playsinline', 'true');
+              }
               
               videoRef.current.play()
                 .then(() => {
@@ -107,7 +131,18 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
                 })
                 .catch(e => {
                   console.error('Error playing video:', e);
-                  setCameraError('Could not start video playback. Please refresh and try again.');
+                  
+                  // Special handling for iOS autoplay restrictions
+                  if (isIOS) {
+                    setCameraError('iOS requires user interaction to start video. Please try tapping the screen or refreshing the page.');
+                    toast({
+                      title: "Camera permission issue",
+                      description: "iOS requires explicit permission. Please check your browser settings.",
+                      variant: "destructive",
+                    });
+                  } else {
+                    setCameraError('Could not start video playback. Please refresh and try again.');
+                  }
                 });
             };
           }
@@ -116,7 +151,13 @@ const CameraView: React.FC<CameraViewProps> = ({ onPhotoTaken }) => {
           
           if (!isMounted) return;
           
-          setCameraError('Camera access denied or not available. Please check your permissions and try again.');
+          // Special message for iOS
+          if (isIOS) {
+            setCameraError('iOS camera access denied. Please ensure camera permissions are enabled in Settings > Safari > Camera (or Chrome > Camera).');
+          } else {
+            setCameraError('Camera access denied or not available. Please check your permissions and try again.');
+          }
+          
           setHasCamera(false);
           
           toast({
