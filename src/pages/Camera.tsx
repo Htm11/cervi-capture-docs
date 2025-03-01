@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -30,11 +29,9 @@ const Camera = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // State
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isFlashlightOn, setIsFlashlightOn] = useState(false);
@@ -42,18 +39,16 @@ const Camera = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [patientData, setPatientData] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState(3); // Default to "Before Acetic"
+  const [currentStep, setCurrentStep] = useState(3);
   const [showAceticAcidDialog, setShowAceticAcidDialog] = useState(false);
   const [isCameraInitializing, setIsCameraInitializing] = useState(true);
   
-  // Check authentication and get patient data
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     
-    // Check if we have patient data
     const storedPatientData = localStorage.getItem('currentPatient');
     if (!storedPatientData) {
       toast({
@@ -68,7 +63,6 @@ const Camera = () => {
     const parsedData = JSON.parse(storedPatientData);
     setPatientData(parsedData);
     
-    // Set current step based on screening step
     if (parsedData.screeningStep === 'after-acetic') {
       setCurrentStep(4);
     } else {
@@ -76,7 +70,6 @@ const Camera = () => {
     }
   }, [isAuthenticated, navigate, toast]);
   
-  // Clean up camera resources when component unmounts
   useEffect(() => {
     return () => {
       if (stream) {
@@ -87,7 +80,6 @@ const Camera = () => {
     };
   }, [stream]);
   
-  // Initialize camera - simplified implementation with better Safari support
   useEffect(() => {
     let isMounted = true;
     
@@ -96,12 +88,10 @@ const Camera = () => {
         setIsCameraInitializing(true);
         setCameraError(null);
         
-        // Check if browser supports getUserMedia
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('Camera API not supported in this browser');
         }
         
-        // Stop any existing streams
         if (stream) {
           stream.getTracks().forEach(track => track.stop());
           setStream(null);
@@ -111,11 +101,9 @@ const Camera = () => {
           videoRef.current.srcObject = null;
         }
         
-        // Detect Safari
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         console.log('Browser detected as Safari:', isSafari);
         
-        // Camera constraints - simpler for initial request
         let constraints = {
           audio: false,
           video: true
@@ -130,7 +118,6 @@ const Camera = () => {
           
           console.log('Initial camera access granted');
           
-          // Now try to get a better quality stream with environment camera on mobile
           if (mediaStream && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
             try {
               const betterConstraints = {
@@ -144,7 +131,6 @@ const Camera = () => {
               
               console.log('Attempting to get better camera with constraints:', betterConstraints);
               
-              // First stop the initial stream
               mediaStream.getTracks().forEach(track => track.stop());
               
               const betterStream = await navigator.mediaDevices.getUserMedia(betterConstraints);
@@ -156,37 +142,32 @@ const Camera = () => {
             } catch (err) {
               console.warn('Could not get environment camera, falling back to initial stream:', err);
               
-              // Fall back to the initial stream
               setStream(mediaStream);
               if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
               }
             }
           } else {
-            // Not mobile or couldn't get better stream, use initial stream
             setStream(mediaStream);
             if (videoRef.current) {
               videoRef.current.srcObject = mediaStream;
             }
           }
           
-          // Set up video playback
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => {
-              if (!isMounted || !videoRef.current) return;
-              
-              videoRef.current.play()
-                .then(() => {
-                  console.log('Video playback started successfully');
-                  setHasCamera(true);
-                  setCameraError(null);
-                })
-                .catch(e => {
-                  console.error('Error playing video:', e);
-                  setCameraError('Could not start video playback. Please refresh and try again.');
-                });
-            };
-          }
+          videoRef.current.onloadedmetadata = () => {
+            if (!isMounted || !videoRef.current) return;
+            
+            videoRef.current.play()
+              .then(() => {
+                console.log('Video playback started successfully');
+                setHasCamera(true);
+                setCameraError(null);
+              })
+              .catch(e => {
+                console.error('Error playing video:', e);
+                setCameraError('Could not start video playback. Please refresh and try again.');
+              });
+          };
         } catch (err) {
           console.error('Camera access error:', err);
           
@@ -206,7 +187,7 @@ const Camera = () => {
         
         if (!isMounted) return;
         
-        setCameraError('Could not initialize camera. Please ensure your device has a camera and you've granted permission.');
+        setCameraError('Could not initialize camera. Please ensure your device has a camera and you have granted permission.');
         setHasCamera(false);
       } finally {
         if (isMounted) {
@@ -215,7 +196,6 @@ const Camera = () => {
       }
     };
     
-    // Small delay to ensure DOM is ready (helps on some mobile browsers)
     const timer = setTimeout(() => {
       initCamera();
     }, 500);
@@ -224,14 +204,12 @@ const Camera = () => {
       isMounted = false;
       clearTimeout(timer);
       
-      // Clean up any active streams
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []); // Only run once on component mount
+  }, []);
   
-  // Toggle flashlight (if available)
   const toggleFlashlight = async () => {
     if (!stream) return;
     
@@ -239,7 +217,6 @@ const Camera = () => {
     if (!videoTrack) return;
     
     try {
-      // Check if flashlight is supported
       const capabilities = videoTrack.getCapabilities();
       console.log('Track capabilities:', capabilities);
       
@@ -271,51 +248,41 @@ const Camera = () => {
     }
   };
   
-  // Take photo
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
-    // Draw video frame to canvas
     const context = canvas.getContext('2d');
     if (context) {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       setPhotoTaken(true);
       
-      // Turn off flashlight if it's on
       if (isFlashlightOn) {
         toggleFlashlight();
       }
     }
   };
   
-  // Reset camera
   const resetCamera = () => {
     setPhotoTaken(false);
   };
   
-  // Analyze image quality
   const analyzeImage = () => {
     if (!canvasRef.current || !patientData) return;
     
     setIsAnalyzing(true);
     
-    // Simulate image analysis (in a real app, this would be an actual algorithm)
     setTimeout(() => {
       const imageDataUrl = canvasRef.current?.toDataURL('image/jpeg');
       
-      // Save the image based on current step
       if (currentStep === 3) {
-        // Before acetic acid
         localStorage.setItem('beforeAceticImage', imageDataUrl || '');
         
-        // Update patient data with new step
         const updatedPatientData = {
           ...patientData,
           screeningStep: 'after-acetic'
@@ -325,10 +292,8 @@ const Camera = () => {
         setIsAnalyzing(false);
         setShowAceticAcidDialog(true);
       } else {
-        // After acetic acid
         localStorage.setItem('afterAceticImage', imageDataUrl || '');
         
-        // For demo, also set capturedImage to ensure compatibility with feedback page
         localStorage.setItem('capturedImage', imageDataUrl || '');
         
         setIsAnalyzing(false);
@@ -339,8 +304,8 @@ const Camera = () => {
   
   const handleAceticAcidConfirm = () => {
     setShowAceticAcidDialog(false);
-    setPhotoTaken(false);  // Reset to camera view
-    setCurrentStep(4);     // Move to next step
+    setPhotoTaken(false);
+    setCurrentStep(4);
   };
   
   const handleBackToForm = () => {
@@ -355,20 +320,16 @@ const Camera = () => {
     }
   };
   
-  // Retry camera initialization
   const handleRetryCamera = () => {
-    // Force re-mount of component (simplified approach)
     setIsCameraInitializing(true);
     setHasCamera(false);
     setCameraError(null);
     
-    // Stop any existing streams
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
     
-    // Wait a moment then re-initialize
     setTimeout(() => {
       window.location.reload();
     }, 300);
