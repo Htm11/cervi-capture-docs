@@ -4,15 +4,24 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Camera, Home } from 'lucide-react';
+import { CheckCircle, Camera, Home, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import Stepper, { Step } from '@/components/Stepper';
+
+const steps: Step[] = [
+  { id: 1, label: "Basic Info" },
+  { id: 2, label: "Medical Info" },
+  { id: 3, label: "Before Acetic" },
+  { id: 4, label: "After Acetic" },
+];
 
 const Feedback = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [beforeImage, setBeforeImage] = useState<string | null>(null);
+  const [afterImage, setAfterImage] = useState<string | null>(null);
   const [patientData, setPatientData] = useState<any>(null);
   
   // Animation state
@@ -25,19 +34,22 @@ const Feedback = () => {
       return;
     }
     
-    // Get captured image from local storage
-    const capturedImage = localStorage.getItem('capturedImage');
-    if (!capturedImage) {
+    // Get captured images from local storage
+    const beforeAceticImage = localStorage.getItem('beforeAceticImage');
+    const afterAceticImage = localStorage.getItem('afterAceticImage');
+    
+    if (!beforeAceticImage || !afterAceticImage) {
       toast({
-        title: "No image captured",
-        description: "Please capture an image first",
+        title: "Missing images",
+        description: "Please complete the imaging process first",
         variant: "destructive",
       });
       navigate('/camera');
       return;
     }
     
-    setImageUrl(capturedImage);
+    setBeforeImage(beforeAceticImage);
+    setAfterImage(afterAceticImage);
     
     // Get patient data from local storage
     const patientDataString = localStorage.getItem('currentPatient');
@@ -54,16 +66,28 @@ const Feedback = () => {
   }, [isAuthenticated, navigate, toast]);
   
   const handleNewScan = () => {
-    // Clear current patient and image
+    // Clear current patient and images
     localStorage.removeItem('capturedImage');
+    localStorage.removeItem('beforeAceticImage');
+    localStorage.removeItem('afterAceticImage');
+    localStorage.removeItem('currentPatient');
     
     // Navigate to patient registration
     navigate('/patient-registration');
   };
   
   const handleTakeNewPhoto = () => {
-    // Clear only the image
-    localStorage.removeItem('capturedImage');
+    // Clear only the after acetic acid image
+    localStorage.removeItem('afterAceticImage');
+    
+    // Update patient data to go back to after acetic step
+    if (patientData) {
+      const updatedPatientData = {
+        ...patientData,
+        screeningStep: 'after-acetic'
+      };
+      localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
+    }
     
     // Navigate back to camera
     navigate('/camera');
@@ -72,13 +96,19 @@ const Feedback = () => {
   return (
     <Layout>
       <div className="flex flex-col items-center justify-center h-full">
+        <Stepper 
+          steps={steps} 
+          currentStep={5} // Set to a number beyond the last step to mark all as completed
+          className="mb-6"
+        />
+
         {showAnimation ? (
           <div className="flex flex-col items-center justify-center p-6 animate-scale-in">
             <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
             <h2 className="text-2xl font-semibold text-center mb-2">Analysis Complete</h2>
-            <p className="text-center text-muted-foreground">Your image has been analyzed and meets the quality requirements</p>
+            <p className="text-center text-muted-foreground">Your images have been analyzed and meet the quality requirements</p>
           </div>
         ) : (
           <>
@@ -87,18 +117,36 @@ const Feedback = () => {
                 <h2 className="text-lg font-medium mb-3">Image Quality Assessment</h2>
                 <div className="flex items-center space-x-2 mb-4">
                   <div className="w-4 h-4 rounded-full bg-green-500" />
-                  <span className="text-sm font-medium">Image meets quality requirements</span>
+                  <span className="text-sm font-medium">Images meet quality requirements</span>
                 </div>
                 
-                {imageUrl && (
-                  <div className="rounded-lg overflow-hidden border border-border">
-                    <img 
-                      src={imageUrl} 
-                      alt="Captured image" 
-                      className="w-full object-contain max-h-[300px]"
-                    />
-                  </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {beforeImage && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-cervi-700">Before Acetic Acid</p>
+                      <div className="rounded-lg overflow-hidden border border-border">
+                        <img 
+                          src={beforeImage} 
+                          alt="Before acetic acid" 
+                          className="w-full object-contain max-h-[200px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {afterImage && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-cervi-700">After Acetic Acid</p>
+                      <div className="rounded-lg overflow-hidden border border-border">
+                        <img 
+                          src={afterImage} 
+                          alt="After acetic acid" 
+                          className="w-full object-contain max-h-[200px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {patientData && (
@@ -134,7 +182,7 @@ const Feedback = () => {
                 onClick={handleTakeNewPhoto}
               >
                 <Camera className="mr-2 h-4 w-4" />
-                Take Another Photo
+                Retake After Acetic Photo
               </Button>
             </div>
           </>

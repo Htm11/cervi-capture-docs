@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Loader2, Camera } from 'lucide-react';
+import { Loader2, Camera, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import Stepper, { Step } from '@/components/Stepper';
 
 interface PatientData {
   firstName: string;
@@ -32,11 +34,19 @@ interface FormErrors {
   [key: string]: string;
 }
 
+const steps: Step[] = [
+  { id: 1, label: "Basic Info" },
+  { id: 2, label: "Medical Info" },
+  { id: 3, label: "Before Acetic" },
+  { id: 4, label: "After Acetic" },
+];
+
 const PatientRegistration = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [patientData, setPatientData] = useState<PatientData>({
     firstName: '',
     lastName: '',
@@ -78,67 +88,72 @@ const PatientRegistration = () => {
     }
   };
 
-  const validateForm = () => {
+  const validateStep = (step: number): boolean => {
     const newErrors: FormErrors = {};
-    const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
     
-    requiredFields.forEach(field => {
-      if (!patientData[field as keyof PatientData]) {
-        newErrors[field] = 'This field is required';
+    if (step === 1) {
+      // Validate basic information
+      const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
+      
+      requiredFields.forEach(field => {
+        if (!patientData[field as keyof PatientData]) {
+          newErrors[field] = 'This field is required';
+        }
+      });
+      
+      if (patientData.phoneNumber && !/^\+?[0-9]{10,15}$/.test(patientData.phoneNumber)) {
+        newErrors.phoneNumber = 'Please enter a valid phone number';
       }
-    });
-    
-    if (patientData.phoneNumber && !/^\+?[0-9]{10,15}$/.test(patientData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid phone number';
-    }
-    
-    if (!patientData.dateOfBirth) {
-      newErrors.dateOfBirth = 'Date of birth is required';
-    }
-    
-    if (!confirmVerified) {
-      newErrors.confirmVerified = 'You must confirm that patient information is verified';
-    }
-    
-    if (!confirmInformed) {
-      newErrors.confirmInformed = 'You must confirm that the patient has been informed';
+      
+      if (!patientData.dateOfBirth) {
+        newErrors.dateOfBirth = 'Date of birth is required';
+      }
+    } else if (step === 2) {
+      // Medical information step - this could be optional
+      // or you could add validation for specific fields
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep === 2) {
+        // Save patient data before proceeding to camera step
+        localStorage.setItem('currentPatient', JSON.stringify({
+          ...patientData,
+          screeningStep: 'before-acetic'
+        }));
+        navigate('/camera');
+      } else {
+        setCurrentStep(prev => prev + 1);
+      }
+    } else {
       toast({
-        title: "Form validation failed",
-        description: "Please correct the errors in the form",
+        title: "Please fix the errors",
+        description: "There are validation errors in the form",
         variant: "destructive",
       });
-      return;
     }
-    
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      localStorage.setItem('currentPatient', JSON.stringify(patientData));
-      
-      setIsSubmitting(false);
-      toast({
-        title: "Patient registered successfully",
-        description: "Proceeding to image capture",
-      });
-      
-      navigate('/camera');
-    }, 1500);
   };
 
-  return (
-    <Layout>
-      <div className="pb-16">
-        <form onSubmit={handleSubmit} className="space-y-8">
+  const handleBack = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleStepClick = (step: number) => {
+    // Only allow navigating to completed steps
+    if (step < currentStep) {
+      setCurrentStep(step);
+    }
+  };
+
+  // Render different content based on the current step
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -213,7 +228,9 @@ const PatientRegistration = () => {
               </div>
             </div>
           </section>
-          
+        );
+      case 2:
+        return (
           <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Medical Information</h2>
             <div className="space-y-4">
@@ -271,11 +288,8 @@ const PatientRegistration = () => {
                 onChange={handleChange}
               />
             </div>
-          </section>
-          
-          <section className="bg-white rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-medium mb-4">Confirmations</h2>
-            <div className="space-y-4">
+            
+            <div className="mt-6 space-y-4">
               <div className="flex items-start space-x-3">
                 <Checkbox 
                   id="confirmVerified" 
@@ -321,22 +335,62 @@ const PatientRegistration = () => {
               </div>
             </div>
           </section>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Layout>
+      <div className="pb-16">
+        <Stepper 
+          steps={steps} 
+          currentStep={currentStep} 
+          onStepClick={handleStepClick}
+          className="mb-6"
+        />
+        
+        <form className="space-y-8">
+          {renderStepContent()}
           
-          <div className="py-4">
+          <div className="py-4 flex space-x-3">
+            {currentStep > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            )}
+            
             <Button 
-              type="submit" 
-              className="w-full bg-cervi-500 hover:bg-cervi-600 text-white" 
+              type="button"
+              className="flex-1 bg-cervi-500 hover:bg-cervi-600 text-white" 
+              onClick={handleNext}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registering patient...
+                  Processing...
                 </>
               ) : (
                 <>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Proceed to Image Capture
+                  {currentStep === 2 ? (
+                    <>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Proceed to Camera
+                    </>
+                  ) : (
+                    <>
+                      Next
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </>
               )}
             </Button>
