@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 210 100% 45%;
+    --primary: 340 82% 76%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96%;
@@ -25,7 +25,7 @@
     --muted: 210 40% 96%;
     --muted-foreground: 220 16% 46%;
 
-    --accent: 210 40% 96%;
+    --accent: 340 82% 90%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
@@ -33,9 +33,9 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 210 100% 45%;
+    --ring: 340 82% 76%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5% 26%;
@@ -68,6 +68,15 @@
 
   .glass-dark {
     @apply bg-black/10 backdrop-blur-md border border-white/10;
+  }
+
+  /* Pink and blue gradient backgrounds inspired by the logo */
+  .bg-cervi-gradient {
+    @apply bg-gradient-to-r from-pink-200 to-cervi-200;
+  }
+
+  .bg-cervi-gradient-reverse {
+    @apply bg-gradient-to-r from-cervi-200 to-pink-200;
   }
 
   /* Page transitions */

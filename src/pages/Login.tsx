@@ -49,45 +49,49 @@ const Login = () => {
   };
 
   return (
-    <Layout hideHeader className="bg-gradient-to-b from-cervi-50 to-white">
+    <Layout hideHeader className="bg-gradient-to-b from-cervi-50 via-cervi-100 to-white">
       <div className="flex flex-col items-center justify-center min-h-screen p-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-cervi-800 mb-2">Cervi Scanner</h1>
-            <p className="text-muted-foreground">Log in to start screening patients</p>
+            <img 
+              src="/lovable-uploads/77cb8974-0f23-401c-a300-d69d6f0523ce.png" 
+              alt="Cervi Scanner Logo" 
+              className="h-24 mx-auto mb-4"
+            />
+            <p className="text-cervi-800 text-lg font-medium">Log in to start screening patients</p>
           </div>
 
-          <div className="glass p-8 rounded-xl shadow-sm">
+          <div className="glass bg-white/90 p-8 rounded-xl shadow-lg border border-cervi-200">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-cervi-800">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="doctor@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={errors.email ? 'border-destructive' : ''}
+                  className={`bg-white/80 border-cervi-200 focus-visible:ring-cervi-300 ${errors.email ? 'border-destructive' : ''}`}
                 />
                 {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-cervi-800">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={errors.password ? 'border-destructive' : ''}
+                  className={`bg-white/80 border-cervi-200 focus-visible:ring-cervi-300 ${errors.password ? 'border-destructive' : ''}`}
                 />
                 {errors.password && <p className="text-destructive text-xs">{errors.password}</p>}
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full bg-cervi-500 hover:bg-cervi-600 text-white" 
+                className="w-full bg-gradient-to-r from-pink-300 to-cervi-400 hover:from-pink-400 hover:to-cervi-500 text-white font-medium" 
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -102,7 +106,7 @@ const Login = () => {
             </form>
           </div>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
+          <p className="text-center text-sm text-cervi-700 mt-6">
             By logging in, you agree to the terms of service and privacy policy.
           </p>
         </div>
