@@ -45,6 +45,7 @@ const Camera = () => {
   const [currentStep, setCurrentStep] = useState(3); // Default to "Before Acetic"
   const [showAceticAcidDialog, setShowAceticAcidDialog] = useState(false);
   const [isCameraInitializing, setIsCameraInitializing] = useState(true);
+  const [safariRetryCount, setSafariRetryCount] = useState(0);
   
   // Check authentication and get patient data
   useEffect(() => {
@@ -88,12 +89,15 @@ const Camera = () => {
     };
   }, [stream]);
   
-  // Initialize camera - improved implementation for mobile compatibility
+  // Initialize camera - improved implementation for mobile compatibility including Safari
   useEffect(() => {
+    let isMounted = true;
+    
     const initCamera = async () => {
       try {
         setIsCameraInitializing(true);
         
+        // Check if browser supports getUserMedia
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('Camera API not supported in this browser');
         }
@@ -107,20 +111,32 @@ const Camera = () => {
           videoRef.current.srcObject = null;
         }
         
-        // Mobile-friendly constraints
-        const constraints = {
-          video: {
+        // Safari-friendly constraints
+        // Using a simpler constraint object first for Safari compatibility
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        
+        let constraints = {
+          audio: false,
+          video: isSafari ? true : {
             facingMode: 'environment', // Use back camera on mobile
             width: { ideal: 1280 },
             height: { ideal: 720 }
-          },
-          audio: false
+          }
         };
         
+        console.log('Detected Safari:', isSafari);
         console.log('Attempting to access camera with constraints:', constraints);
         
         try {
+          // Request permission first for Safari
+          if (isSafari) {
+            await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
+          
           const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          
+          if (!isMounted) return; // Check if component is still mounted
+          
           console.log('Camera access granted:', mediaStream);
           
           if (videoRef.current) {
@@ -128,24 +144,33 @@ const Camera = () => {
             
             // Wait for video to be ready before playing
             videoRef.current.onloadedmetadata = () => {
-              if (videoRef.current) {
-                videoRef.current.play()
-                  .then(() => {
-                    console.log('Video playback started successfully');
-                    setHasCamera(true);
-                    setCameraError(null);
-                  })
-                  .catch(e => {
-                    console.error('Error playing video:', e);
-                    setCameraError('Failed to start video playback. Please try again.');
-                  });
-              }
+              if (!isMounted || !videoRef.current) return;
+              
+              videoRef.current.play()
+                .then(() => {
+                  console.log('Video playback started successfully');
+                  setHasCamera(true);
+                  setCameraError(null);
+                })
+                .catch(e => {
+                  console.error('Error playing video:', e);
+                  setCameraError('Failed to start video playback. Please try again.');
+                  
+                  // For Safari: try to handle playback failures with a retry
+                  if (isSafari && safariRetryCount < 3) {
+                    setTimeout(() => {
+                      setSafariRetryCount(prev => prev + 1);
+                    }, 1000);
+                  }
+                });
             };
             
             setStream(mediaStream);
           }
         } catch (err) {
           console.error('Initial camera access failed:', err);
+          
+          if (!isMounted) return;
           
           // Fallback to basic video constraints if the initial attempt fails
           const fallbackConstraints = { 
@@ -154,12 +179,16 @@ const Camera = () => {
           };
           
           console.log('Trying fallback constraints:', fallbackConstraints);
-          const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-          
-          if (videoRef.current) {
-            videoRef.current.srcObject = fallbackStream;
-            videoRef.current.onloadedmetadata = () => {
-              if (videoRef.current) {
+          try {
+            const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+            
+            if (!isMounted) return;
+            
+            if (videoRef.current) {
+              videoRef.current.srcObject = fallbackStream;
+              videoRef.current.onloadedmetadata = () => {
+                if (!isMounted || !videoRef.current) return;
+                
                 videoRef.current.play()
                   .then(() => {
                     console.log('Video playback started with fallback constraints');
@@ -170,23 +199,57 @@ const Camera = () => {
                     console.error('Error playing video with fallback:', e);
                     setCameraError('Failed to start video stream with fallback settings');
                   });
-              }
-            };
+              };
+              
+              setStream(fallbackStream);
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback camera access failed:', fallbackErr);
             
-            setStream(fallbackStream);
+            if (!isMounted) return;
+            
+            setCameraError('Camera access denied or not available. Please check your permissions.');
+            setHasCamera(false);
+            
+            // Show toast for camera access denial
+            toast({
+              title: "Camera access denied",
+              description: "Please enable camera access in your browser settings and reload the page.",
+              variant: "destructive",
+            });
           }
         }
       } catch (error) {
         console.error('All camera access attempts failed:', error);
+        
+        if (!isMounted) return;
+        
         setCameraError('Camera access denied or not available. Please check your permissions.');
         setHasCamera(false);
+        
+        toast({
+          title: "Camera error",
+          description: "Failed to access camera. Please ensure your device has a camera and you've granted permission.",
+          variant: "destructive",
+        });
       } finally {
-        setIsCameraInitializing(false);
+        if (isMounted) {
+          setIsCameraInitializing(false);
+        }
       }
     };
     
     initCamera();
-  }, []);
+    
+    // Retry camera initialization if Safari retry count changes
+    if (safariRetryCount > 0) {
+      initCamera();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [safariRetryCount, toast]);
   
   // Toggle flashlight (if available)
   const toggleFlashlight = async () => {
