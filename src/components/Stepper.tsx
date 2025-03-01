@@ -19,7 +19,10 @@ interface StepperProps {
 const Stepper = ({ steps, currentStep, onStepClick, className }: StepperProps) => {
   return (
     <div className={cn("w-full pb-6", className)}>
-      <div className="flex justify-between">
+      <div className="flex justify-between relative">
+        {/* Connector line that runs through all steps */}
+        <div className="absolute h-[2px] top-4 left-0 right-0 bg-gray-200" />
+        
         {steps.map((step) => {
           const isCompleted = step.id < currentStep;
           const isActive = step.id === currentStep;
@@ -28,19 +31,21 @@ const Stepper = ({ steps, currentStep, onStepClick, className }: StepperProps) =
             <div 
               key={step.id} 
               className={cn(
-                "flex flex-col items-center relative",
+                "flex flex-col items-center relative z-10",
                 onStepClick && "cursor-pointer"
               )}
               onClick={() => onStepClick && isCompleted && onStepClick(step.id)}
             >
-              {/* Step connector line */}
-              {step.id < steps.length && (
+              {/* Step connector line - colored based on completion */}
+              {step.id > 1 && (
                 <div 
                   className={cn(
-                    "absolute h-[2px] top-4 left-1/2 right-0 w-full",
-                    isCompleted ? "bg-cervi-500" : "bg-gray-200"
+                    "absolute h-[2px] top-4 right-1/2 w-full",
+                    isCompleted || (step.id > 1 && steps[step.id - 2] && steps[step.id - 2].id < currentStep) 
+                      ? "bg-cervi-500" 
+                      : "bg-gray-200"
                   )}
-                  style={{ width: 'calc(100% - 2rem)' }}
+                  style={{ width: 'calc(100% - 1rem)', right: '50%', transform: 'translateX(-50%)' }}
                 />
               )}
               
