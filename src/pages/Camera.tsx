@@ -79,19 +79,33 @@ const Camera = () => {
   useEffect(() => {
     const initCamera = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera API not supported in this browser');
+        }
+        
         const constraints = {
           video: {
-            facingMode: 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           },
           audio: false
         };
         
+        console.log('Attempting to access camera with constraints:', constraints);
         const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('Camera access granted:', mediaStream);
         
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => {
+            if (videoRef.current) {
+              videoRef.current.play().catch(e => {
+                console.error('Error playing video:', e);
+                setCameraError('Failed to start video stream');
+              });
+            }
+          };
           setStream(mediaStream);
           setHasCamera(true);
           setCameraError(null);
@@ -108,7 +122,10 @@ const Camera = () => {
     // Cleanup
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          console.log('Stopping track:', track);
+          track.stop();
+        });
       }
     };
   }, []);
@@ -148,7 +165,7 @@ const Camera = () => {
       try {
         // Using 'any' type for now as the torch property isn't standard in the TypeScript MediaTrackConstraints type
         await track.applyConstraints({
-          advanced: [{ fillLight: !isFlashlightOn ? 'flash' : 'off' } as any]
+          advanced: [{ torch: !isFlashlightOn } as any]
         });
         setIsFlashlightOn(!isFlashlightOn);
         
@@ -280,15 +297,16 @@ const Camera = () => {
           )}
         </div>
         
-        <div className="relative mb-4 rounded-xl overflow-hidden bg-black aspect-[3/4] flex items-center justify-center">
+        <div className="relative mb-4 rounded-xl overflow-hidden bg-black aspect-[3/4] flex items-center justify-center shadow-lg">
           {hasCamera ? (
             <>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
+                muted
                 className={cn(
-                  "w-full h-full object-cover",
+                  "w-full h-full object-cover rounded-xl",
                   photoTaken ? "hidden" : "block"
                 )}
               />
@@ -296,7 +314,7 @@ const Camera = () => {
               <canvas
                 ref={canvasRef}
                 className={cn(
-                  "w-full h-full object-contain bg-black",
+                  "w-full h-full object-contain bg-black rounded-xl",
                   photoTaken ? "block" : "hidden"
                 )}
               />
