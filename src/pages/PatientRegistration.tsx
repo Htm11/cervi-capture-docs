@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Camera, ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react';
+import { Loader2, Camera, ArrowLeft, ArrowRight, ChevronDown, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -31,6 +30,7 @@ interface PatientData {
   lastName: string;
   countryCode: string;
   phoneNumber: string;
+  email: string;
   dateOfBirth: Date | undefined;
   sociodemographicData: string;
   reproductiveHistory: string;
@@ -96,6 +96,7 @@ const PatientRegistration = () => {
     lastName: '',
     countryCode: '+250',
     phoneNumber: '',
+    email: '',
     dateOfBirth: undefined,
     sociodemographicData: '',
     reproductiveHistory: '',
@@ -220,6 +221,10 @@ const PatientRegistration = () => {
         newErrors.phoneNumber = 'Please enter a valid phone number (7-12 digits)';
       }
       
+      if (patientData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientData.email)) {
+        newErrors.email = 'Please enter a valid email address';
+      }
+      
       if (!patientData.dateOfBirth) {
         newErrors.dateOfBirth = 'Date of birth is required';
       }
@@ -250,7 +255,6 @@ const PatientRegistration = () => {
     try {
       setIsSubmitting(true);
       
-      // Structure medical history as a JSON object
       const medicalHistoryJSON = {
         sociodemographic: {
           education: patientData.education,
@@ -270,7 +274,6 @@ const PatientRegistration = () => {
         }
       };
       
-      // Log the medical history data to verify structure
       console.log('Medical history being saved:', JSON.stringify(medicalHistoryJSON, null, 2));
       console.log('Medical conditions:', patientData.existingConditions);
       console.log('Symptoms:', patientData.commonSymptoms);
@@ -281,7 +284,7 @@ const PatientRegistration = () => {
         last_name: patientData.lastName,
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
         contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
-        email: '',
+        email: patientData.email,
         medical_history: medicalHistoryJSON
       };
       
@@ -317,7 +320,6 @@ const PatientRegistration = () => {
         
         setCurrentStep(2);
       } else if (currentStep === 2) {
-        // Add the structured medical history to localStorage too
         const medicalHistoryJSON = {
           sociodemographic: {
             education: patientData.education,
@@ -418,6 +420,22 @@ const PatientRegistration = () => {
                   />
                 </div>
                 {errors.phoneNumber && <p className="text-destructive text-xs">{errors.phoneNumber}</p>}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" />
+                  Email (optional)
+                </Label>
+                <input
+                  id="email"
+                  type="email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="patient@example.com"
+                  value={patientData.email}
+                  onChange={handleChange}
+                />
+                {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
               </div>
               
               <div className="space-y-2">
