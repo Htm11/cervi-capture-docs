@@ -112,25 +112,60 @@ const ResultDetail = () => {
   }
   
   // Function to format medical history data for display
-  const formatMedicalHistory = (medicalHistoryText: string | null) => {
-    if (!medicalHistoryText) return null;
+  const formatMedicalHistory = (medicalHistoryData: string | null) => {
+    if (!medicalHistoryData) return null;
     
     try {
       // Try to parse as JSON if it's in JSON format
-      const medicalHistory = JSON.parse(medicalHistoryText);
+      const medicalHistory = typeof medicalHistoryData === 'string' 
+        ? JSON.parse(medicalHistoryData) 
+        : medicalHistoryData;
+      
       return (
-        <div className="space-y-2">
-          {Object.entries(medicalHistory).map(([key, value]) => (
-            <div key={key} className="flex justify-between">
-              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-              <span className="font-medium">{String(value)}</span>
-            </div>
-          ))}
+        <div className="space-y-4">
+          {Object.entries(medicalHistory).map(([sectionKey, sectionValue]) => {
+            // Skip rendering if sectionValue is null or undefined
+            if (!sectionValue) return null;
+            
+            return (
+              <div key={sectionKey} className="space-y-2">
+                <h3 className="text-sm font-semibold capitalize">{sectionKey}</h3>
+                {typeof sectionValue === 'object' ? (
+                  <div className="pl-4 space-y-2">
+                    {Object.entries(sectionValue as Record<string, any>).map(([key, value]) => {
+                      // Skip rendering if value is null, undefined, or empty array
+                      if (value === null || value === undefined || 
+                         (Array.isArray(value) && value.length === 0)) return null;
+                      
+                      return (
+                        <div key={key} className="flex justify-between">
+                          <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="font-medium text-right">
+                            {Array.isArray(value) 
+                              ? value.join(', ') 
+                              : typeof value === 'object'
+                                ? JSON.stringify(value)
+                                : String(value)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground capitalize">{sectionKey.replace(/_/g, ' ')}</span>
+                    <span className="font-medium">{String(sectionValue)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     } catch (e) {
       // If not JSON, display as plain text
-      return <p>{medicalHistoryText}</p>;
+      console.error('Error formatting medical history:', e);
+      return <p>{medicalHistoryData}</p>;
     }
   };
   
