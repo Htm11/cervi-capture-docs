@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -8,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Camera, ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,43 +29,11 @@ interface PatientData {
   countryCode: string;
   phoneNumber: string;
   dateOfBirth: Date | undefined;
-  
-  // Updated medical information structure
-  sociodemographicData: {
-    education: string;
-    occupation: string;
-    maritalStatus: string;
-    livingArrangement: string;
-  };
-  
-  reproductiveHistory: {
-    pregnancies: string;
-    births: string;
-    abortions: string;
-    lastMenstrualPeriod: string;
-    contraceptiveUse: string;
-    contraceptiveType: string;
-  };
-  
-  medicalHistory: {
-    existingConditions: string[];
-    medications: string;
-    allergies: string;
-    previousSurgeries: string;
-    familyHistory: string[];
-  };
-  
-  lifestyleFactors: {
-    smokingStatus: string;
-    smokingFrequency: string;
-    alcoholUse: string;
-    alcoholFrequency: string;
-    physicalActivity: string;
-    diet: string[];
-  };
-  
-  symptoms: string[];
-  lastVisaExamDate: string;
+  sociodemographicData: string;
+  reproductiveHistory: string;
+  medicalHistory: string;
+  lifestyleFactors: string;
+  symptoms: string;
   lastVisaExamResults: string;
 }
 
@@ -275,55 +241,6 @@ const countryCodes = [
   { code: "+998", country: "Uzbekistan" },
 ];
 
-// Medical form options
-const educationLevels = [
-  "None", "Primary", "Secondary", "Tertiary", "University", "Postgraduate"
-];
-
-const maritalStatusOptions = [
-  "Single", "Married", "Divorced", "Widowed", "Separated", "Partnered"
-];
-
-const livingArrangementOptions = [
-  "Alone", "With family", "With partner", "With roommates", "Assisted living", "Other"
-];
-
-const contraceptiveOptions = [
-  "None", "Oral contraceptives", "IUD", "Implant", "Injection", "Condoms", 
-  "Diaphragm", "Rhythm method", "Sterilization", "Other"
-];
-
-const medicalConditions = [
-  "Diabetes", "Hypertension", "Heart disease", "Asthma", "Cancer", 
-  "Thyroid disorder", "Kidney disease", "Liver disease", "Autoimmune disease",
-  "HIV/AIDS", "Hepatitis", "Sexually transmitted infection", "Mental health condition",
-  "Neurological disorder", "None"
-];
-
-const familyHistoryConditions = [
-  "Cancer", "Diabetes", "Heart disease", "Hypertension", "Stroke", 
-  "Genetic disorders", "Autoimmune diseases", "None"
-];
-
-const dietaryOptions = [
-  "Balanced diet", "High protein", "Vegetarian", "Vegan", "Gluten-free",
-  "Lactose-free", "Low carb", "High carb", "Keto", "Paleo", "Other"
-];
-
-const commonSymptoms = [
-  "None", "Abnormal vaginal bleeding", "Pelvic pain", "Vaginal discharge",
-  "Pain during intercourse", "Post-coital bleeding", "Lower back pain",
-  "Urinary problems", "Itching", "Burning sensation", "Weight loss", "Fatigue"
-];
-
-const frequencyOptions = [
-  "None", "Rarely", "Occasionally", "Regularly", "Daily", "Multiple times daily"
-];
-
-const physicalActivityOptions = [
-  "None", "Light (1-2 days/week)", "Moderate (3-4 days/week)", "Active (5-7 days/week)", "Very active"
-];
-
 const PatientRegistration = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -336,43 +253,11 @@ const PatientRegistration = () => {
     countryCode: '+1', // Default to US/Canada
     phoneNumber: '',
     dateOfBirth: undefined,
-    
-    // Initialize structured medical data
-    sociodemographicData: {
-      education: '',
-      occupation: '',
-      maritalStatus: '',
-      livingArrangement: ''
-    },
-    
-    reproductiveHistory: {
-      pregnancies: '',
-      births: '',
-      abortions: '',
-      lastMenstrualPeriod: '',
-      contraceptiveUse: 'No',
-      contraceptiveType: ''
-    },
-    
-    medicalHistory: {
-      existingConditions: [],
-      medications: '',
-      allergies: '',
-      previousSurgeries: '',
-      familyHistory: []
-    },
-    
-    lifestyleFactors: {
-      smokingStatus: 'No',
-      smokingFrequency: '',
-      alcoholUse: 'No',
-      alcoholFrequency: '',
-      physicalActivity: '',
-      diet: []
-    },
-    
-    symptoms: [],
-    lastVisaExamDate: '',
+    sociodemographicData: '',
+    reproductiveHistory: '',
+    medicalHistory: '',
+    lifestyleFactors: '',
+    symptoms: '',
     lastVisaExamResults: ''
   });
 
@@ -410,108 +295,6 @@ const PatientRegistration = () => {
     setYearView(false); // Reset to day view after selecting a date
   };
 
-  // New handlers for structured data
-  const handleSociodemographicChange = (field: string, value: string) => {
-    setPatientData(prev => ({
-      ...prev,
-      sociodemographicData: {
-        ...prev.sociodemographicData,
-        [field]: value
-      }
-    }));
-  };
-  
-  const handleReproductiveHistoryChange = (field: string, value: string) => {
-    setPatientData(prev => ({
-      ...prev,
-      reproductiveHistory: {
-        ...prev.reproductiveHistory,
-        [field]: value
-      }
-    }));
-  };
-  
-  const handleMedicalHistoryChange = (field: string, value: string) => {
-    setPatientData(prev => ({
-      ...prev,
-      medicalHistory: {
-        ...prev.medicalHistory,
-        [field]: value
-      }
-    }));
-  };
-  
-  const handleExistingConditionsChange = (condition: string, checked: boolean) => {
-    setPatientData(prev => {
-      const newConditions = checked
-        ? [...prev.medicalHistory.existingConditions, condition]
-        : prev.medicalHistory.existingConditions.filter(c => c !== condition);
-      
-      return {
-        ...prev,
-        medicalHistory: {
-          ...prev.medicalHistory,
-          existingConditions: newConditions
-        }
-      };
-    });
-  };
-  
-  const handleFamilyHistoryChange = (condition: string, checked: boolean) => {
-    setPatientData(prev => {
-      const newConditions = checked
-        ? [...prev.medicalHistory.familyHistory, condition]
-        : prev.medicalHistory.familyHistory.filter(c => c !== condition);
-      
-      return {
-        ...prev,
-        medicalHistory: {
-          ...prev.medicalHistory,
-          familyHistory: newConditions
-        }
-      };
-    });
-  };
-  
-  const handleLifestyleChange = (field: string, value: string) => {
-    setPatientData(prev => ({
-      ...prev,
-      lifestyleFactors: {
-        ...prev.lifestyleFactors,
-        [field]: value
-      }
-    }));
-  };
-  
-  const handleDietChange = (diet: string, checked: boolean) => {
-    setPatientData(prev => {
-      const newDiet = checked
-        ? [...prev.lifestyleFactors.diet, diet]
-        : prev.lifestyleFactors.diet.filter(d => d !== diet);
-      
-      return {
-        ...prev,
-        lifestyleFactors: {
-          ...prev.lifestyleFactors,
-          diet: newDiet
-        }
-      };
-    });
-  };
-  
-  const handleSymptomsChange = (symptom: string, checked: boolean) => {
-    setPatientData(prev => {
-      const newSymptoms = checked
-        ? [...prev.symptoms, symptom]
-        : prev.symptoms.filter(s => s !== symptom);
-      
-      return {
-        ...prev,
-        symptoms: newSymptoms
-      };
-    });
-  };
-
   const validateStep = (step: number): boolean => {
     const newErrors: FormErrors = {};
     
@@ -544,15 +327,13 @@ const PatientRegistration = () => {
   const handleNext = () => {
     if (validateStep(currentStep)) {
       if (currentStep === 2) {
-        // Prepare patient data for storage
-        const patientDataForStorage = {
+        // Save patient data before proceeding to camera step
+        localStorage.setItem('currentPatient', JSON.stringify({
           ...patientData,
           screeningStep: 'before-acetic',
+          // Combine country code and phone number for storage
           phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`
-        };
-        
-        // Convert structured data to string for compatibility with existing code
-        localStorage.setItem('currentPatient', JSON.stringify(patientDataForStorage));
+        }));
         navigate('/camera');
       } else {
         setCurrentStep(prev => prev + 1);
@@ -730,427 +511,106 @@ const PatientRegistration = () => {
         );
       case 2:
         return (
-          <section className="bg-white rounded-xl p-6 shadow-sm max-h-[80vh] overflow-y-auto">
+          <section className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-medium mb-4">Medical Information</h2>
-            
-            {/* Sociodemographic Data */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Sociodemographic Data</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="education">Education Level</Label>
-                  <Select 
-                    value={patientData.sociodemographicData.education} 
-                    onValueChange={(value) => handleSociodemographicChange('education', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select education level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {educationLevels.map((level) => (
-                        <SelectItem key={level} value={level}>{level}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="occupation">Occupation</Label>
-                  <input
-                    id="occupation"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter occupation"
-                    value={patientData.sociodemographicData.occupation}
-                    onChange={(e) => handleSociodemographicChange('occupation', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="maritalStatus">Marital Status</Label>
-                  <Select 
-                    value={patientData.sociodemographicData.maritalStatus} 
-                    onValueChange={(value) => handleSociodemographicChange('maritalStatus', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select marital status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {maritalStatusOptions.map((status) => (
-                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="livingArrangement">Living Arrangement</Label>
-                  <Select 
-                    value={patientData.sociodemographicData.livingArrangement} 
-                    onValueChange={(value) => handleSociodemographicChange('livingArrangement', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select living arrangement" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {livingArrangementOptions.map((arrangement) => (
-                        <SelectItem key={arrangement} value={arrangement}>{arrangement}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-            
-            {/* Reproductive History */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Reproductive History</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pregnancies">Number of Pregnancies</Label>
-                  <input
-                    id="pregnancies"
-                    type="number"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter number"
-                    value={patientData.reproductiveHistory.pregnancies}
-                    onChange={(e) => handleReproductiveHistoryChange('pregnancies', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="births">Number of Births</Label>
-                  <input
-                    id="births"
-                    type="number"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter number"
-                    value={patientData.reproductiveHistory.births}
-                    onChange={(e) => handleReproductiveHistoryChange('births', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="abortions">Number of Abortions</Label>
-                  <input
-                    id="abortions"
-                    type="number"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter number"
-                    value={patientData.reproductiveHistory.abortions}
-                    onChange={(e) => handleReproductiveHistoryChange('abortions', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="lastMenstrualPeriod">Last Menstrual Period</Label>
-                  <input
-                    id="lastMenstrualPeriod"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="e.g., 10 days ago, 2 weeks ago"
-                    value={patientData.reproductiveHistory.lastMenstrualPeriod}
-                    onChange={(e) => handleReproductiveHistoryChange('lastMenstrualPeriod', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="contraceptiveUse">Contraceptive Use</Label>
-                  <RadioGroup 
-                    value={patientData.reproductiveHistory.contraceptiveUse}
-                    onValueChange={(value) => handleReproductiveHistoryChange('contraceptiveUse', value)}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Yes" id="contraceptive-yes" />
-                      <Label htmlFor="contraceptive-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="contraceptive-no" />
-                      <Label htmlFor="contraceptive-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                {patientData.reproductiveHistory.contraceptiveUse === 'Yes' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="contraceptiveType">Contraceptive Type</Label>
-                    <Select 
-                      value={patientData.reproductiveHistory.contraceptiveType} 
-                      onValueChange={(value) => handleReproductiveHistoryChange('contraceptiveType', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select contraceptive type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contraceptiveOptions.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Medical History */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Medical History</h3>
+            <div className="space-y-4">
+              <FormField
+                id="sociodemographicData"
+                label="Sociodemographic Data"
+                multiline
+                placeholder="Enter sociodemographic information"
+                value={patientData.sociodemographicData}
+                onChange={handleChange}
+              />
               
-              <div className="mb-4">
-                <Label className="mb-2 block">Existing Medical Conditions</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {medicalConditions.map((condition) => (
-                    <div key={condition} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`condition-${condition}`} 
-                        checked={patientData.medicalHistory.existingConditions.includes(condition)}
-                        onCheckedChange={(checked) => handleExistingConditionsChange(condition, checked as boolean)}
-                      />
-                      <Label htmlFor={`condition-${condition}`} className="text-sm">{condition}</Label>
-                    </div>
-                  ))}
+              <FormField
+                id="reproductiveHistory"
+                label="Reproductive History"
+                multiline
+                placeholder="Enter reproductive history"
+                value={patientData.reproductiveHistory}
+                onChange={handleChange}
+              />
+              
+              <FormField
+                id="medicalHistory"
+                label="Medical History"
+                multiline
+                placeholder="Enter medical history"
+                value={patientData.medicalHistory}
+                onChange={handleChange}
+              />
+              
+              <FormField
+                id="lifestyleFactors"
+                label="Lifestyle Factors"
+                multiline
+                placeholder="Enter lifestyle factors"
+                value={patientData.lifestyleFactors}
+                onChange={handleChange}
+              />
+              
+              <FormField
+                id="symptoms"
+                label="Symptoms (if any)"
+                multiline
+                placeholder="Enter symptoms"
+                value={patientData.symptoms}
+                onChange={handleChange}
+              />
+              
+              <FormField
+                id="lastVisaExamResults"
+                label="Last Visa Exam Results"
+                multiline
+                placeholder="Enter results from the last visa exam"
+                value={patientData.lastVisaExamResults}
+                onChange={handleChange}
+              />
+            </div>
+            
+            <div className="mt-6 space-y-4">
+              <div className="flex items-start space-x-3">
+                <Checkbox 
+                  id="confirmVerified" 
+                  checked={confirmVerified} 
+                  onCheckedChange={(checked) => {
+                    setConfirmVerified(checked as boolean);
+                    if (checked && errors.confirmVerified) {
+                      setErrors(prev => ({ ...prev, confirmVerified: '' }));
+                    }
+                  }}
+                />
+                <div className="space-y-1">
+                  <Label 
+                    htmlFor="confirmVerified" 
+                    className="text-sm font-medium"
+                  >
+                    I confirm that all patient information has been verified
+                  </Label>
+                  {errors.confirmVerified && <p className="text-destructive text-xs">{errors.confirmVerified}</p>}
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="medications">Current Medications</Label>
-                  <textarea
-                    id="medications"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-                    placeholder="List current medications"
-                    value={patientData.medicalHistory.medications}
-                    onChange={(e) => handleMedicalHistoryChange('medications', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="allergies">Allergies</Label>
-                  <textarea
-                    id="allergies"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-                    placeholder="List allergies"
-                    value={patientData.medicalHistory.allergies}
-                    onChange={(e) => handleMedicalHistoryChange('allergies', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="previousSurgeries">Previous Surgeries</Label>
-                  <textarea
-                    id="previousSurgeries"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md h-24"
-                    placeholder="List previous surgeries"
-                    value={patientData.medicalHistory.previousSurgeries}
-                    onChange={(e) => handleMedicalHistoryChange('previousSurgeries', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="mb-2 block">Family History</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {familyHistoryConditions.map((condition) => (
-                      <div key={condition} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`family-${condition}`} 
-                          checked={patientData.medicalHistory.familyHistory.includes(condition)}
-                          onCheckedChange={(checked) => handleFamilyHistoryChange(condition, checked as boolean)}
-                        />
-                        <Label htmlFor={`family-${condition}`} className="text-sm">{condition}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Lifestyle Factors */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Lifestyle Factors</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="smokingStatus">Smoking Status</Label>
-                  <RadioGroup 
-                    value={patientData.lifestyleFactors.smokingStatus}
-                    onValueChange={(value) => handleLifestyleChange('smokingStatus', value)}
-                    className="flex space-x-4"
+              <div className="flex items-start space-x-3">
+                <Checkbox 
+                  id="confirmInformed" 
+                  checked={confirmInformed} 
+                  onCheckedChange={(checked) => {
+                    setConfirmInformed(checked as boolean);
+                    if (checked && errors.confirmInformed) {
+                      setErrors(prev => ({ ...prev, confirmInformed: '' }));
+                    }
+                  }}
+                />
+                <div className="space-y-1">
+                  <Label 
+                    htmlFor="confirmInformed" 
+                    className="text-sm font-medium"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Yes" id="smoking-yes" />
-                      <Label htmlFor="smoking-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="smoking-no" />
-                      <Label htmlFor="smoking-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                {patientData.lifestyleFactors.smokingStatus === 'Yes' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="smokingFrequency">Smoking Frequency</Label>
-                    <Select 
-                      value={patientData.lifestyleFactors.smokingFrequency} 
-                      onValueChange={(value) => handleLifestyleChange('smokingFrequency', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select frequency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {frequencyOptions.map((option) => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="alcoholUse">Alcohol Consumption</Label>
-                  <RadioGroup 
-                    value={patientData.lifestyleFactors.alcoholUse}
-                    onValueChange={(value) => handleLifestyleChange('alcoholUse', value)}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Yes" id="alcohol-yes" />
-                      <Label htmlFor="alcohol-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="alcohol-no" />
-                      <Label htmlFor="alcohol-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                {patientData.lifestyleFactors.alcoholUse === 'Yes' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="alcoholFrequency">Alcohol Frequency</Label>
-                    <Select 
-                      value={patientData.lifestyleFactors.alcoholFrequency} 
-                      onValueChange={(value) => handleLifestyleChange('alcoholFrequency', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select frequency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {frequencyOptions.map((option) => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="physicalActivity">Physical Activity</Label>
-                  <Select 
-                    value={patientData.lifestyleFactors.physicalActivity} 
-                    onValueChange={(value) => handleLifestyleChange('physicalActivity', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select activity level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {physicalActivityOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="mb-2 block">Diet</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {dietaryOptions.map((diet) => (
-                      <div key={diet} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`diet-${diet}`} 
-                          checked={patientData.lifestyleFactors.diet.includes(diet)}
-                          onCheckedChange={(checked) => handleDietChange(diet, checked as boolean)}
-                        />
-                        <Label htmlFor={`diet-${diet}`} className="text-sm">{diet}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Symptoms */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Current Symptoms</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {commonSymptoms.map((symptom) => (
-                  <div key={symptom} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`symptom-${symptom}`} 
-                      checked={patientData.symptoms.includes(symptom)}
-                      onCheckedChange={(checked) => handleSymptomsChange(symptom, checked as boolean)}
-                    />
-                    <Label htmlFor={`symptom-${symptom}`} className="text-sm">{symptom}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Previous Screening History */}
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Previous Screening History</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lastVisaExamDate">Last Cervical Screening Date</Label>
-                  <input
-                    id="lastVisaExamDate"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="e.g., 2 years ago, March 2021"
-                    value={patientData.lastVisaExamDate}
-                    onChange={(e) => setPatientData(prev => ({ ...prev, lastVisaExamDate: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="lastVisaExamResults">Last Screening Results</Label>
-                  <input
-                    id="lastVisaExamResults"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="e.g., Normal, Abnormal, Unknown"
-                    value={patientData.lastVisaExamResults}
-                    onChange={(e) => setPatientData(prev => ({ ...prev, lastVisaExamResults: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Consent Checkboxes */}
-            <div className="mb-6">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Checkbox 
-                    id="verifiedCheck" 
-                    checked={confirmVerified}
-                    onCheckedChange={(checked) => setConfirmVerified(checked as boolean)}
-                  />
-                  <Label htmlFor="verifiedCheck" className="text-sm">
-                    I confirm that I have verified the patient's identity and the information provided is accurate to the best of my knowledge.
+                    I confirm that the patient has been informed about the procedure
                   </Label>
-                </div>
-                
-                <div className="flex items-start space-x-3">
-                  <Checkbox 
-                    id="informedCheck" 
-                    checked={confirmInformed}
-                    onCheckedChange={(checked) => setConfirmInformed(checked as boolean)}
-                  />
-                  <Label htmlFor="informedCheck" className="text-sm">
-                    I confirm that the patient has been informed about the procedure and has given consent for the screening.
-                  </Label>
+                  {errors.confirmInformed && <p className="text-destructive text-xs">{errors.confirmInformed}</p>}
                 </div>
               </div>
             </div>
@@ -1163,53 +623,59 @@ const PatientRegistration = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Patient Registration</h1>
-          <div className="text-sm text-muted-foreground">
-            Step {currentStep} of {steps.length}
-          </div>
-        </div>
-        
+      <div className="pb-16">
         <Stepper 
           steps={steps} 
           currentStep={currentStep} 
-          onStepClick={handleStepClick} 
+          onStepClick={handleStepClick}
+          className="mb-6"
         />
         
-        {renderStepContent()}
-        
-        <div className="flex justify-between pt-4">
-          {currentStep > 1 ? (
-            <Button 
-              variant="outline" 
-              onClick={handleBack}
-              className="flex items-center"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-          ) : (
-            <div></div>
-          )}
+        <form className="space-y-8">
+          {renderStepContent()}
           
-          <Button 
-            onClick={handleNext}
-            disabled={isSubmitting || (currentStep === 2 && (!confirmVerified || !confirmInformed))}
-            className="flex items-center"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                {currentStep === 2 ? 'Start Screening' : 'Next'} 
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
+          <div className="py-4 flex space-x-3">
+            {currentStep > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
             )}
-          </Button>
-        </div>
+            
+            <Button 
+              type="button"
+              className="flex-1 bg-cervi-500 hover:bg-cervi-600 text-white" 
+              onClick={handleNext}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {currentStep === 2 ? (
+                    <>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Proceed to Camera
+                    </>
+                  ) : (
+                    <>
+                      Next
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </Layout>
   );
