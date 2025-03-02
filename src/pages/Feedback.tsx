@@ -174,21 +174,46 @@ const Feedback = () => {
     setIsSaving(true);
     
     try {
-      console.log("Starting database save with data:", {
+      console.log("Starting database save with patient data:", {
         doctorId: currentDoctor.id,
+        patientId: patientData.id,
         patientData: patientData,
         hasImages: !!beforeImage && !!afterImage,
         analysisResult
       });
       
       // First ensure we have a valid patient ID
-      const validPatientId = await ensurePatientExists(patientData, currentDoctor.id);
-      
-      if (!validPatientId) {
-        throw new Error("Failed to get a valid patient ID");
+      let validPatientId;
+      try {
+        validPatientId = await ensurePatientExists(patientData, currentDoctor.id);
+        
+        if (!validPatientId) {
+          throw new Error("Failed to get a valid patient ID");
+        }
+        
+        // Update local patientData with the valid ID to ensure it's used for uploads
+        setPatientData({
+          ...patientData,
+          id: validPatientId
+        });
+        
+        // Also update localStorage
+        localStorage.setItem('currentPatient', JSON.stringify({
+          ...patientData,
+          id: validPatientId
+        }));
+        
+        console.log("Got valid patient ID:", validPatientId);
+      } catch (error) {
+        console.error("Failed to ensure patient exists:", error);
+        toast({
+          title: "Patient error",
+          description: "Could not verify or create patient record.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
       }
-      
-      console.log("Got valid patient ID:", validPatientId);
       
       // Then upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
@@ -246,7 +271,7 @@ const Feedback = () => {
       console.error('Error saving result:', error);
       toast({
         title: "Save failed",
-        description: "There was an error saving the screening result",
+        description: error instanceof Error ? error.message : "There was an error saving the screening result",
         variant: "destructive",
       });
     } finally {

@@ -41,17 +41,19 @@ export const uploadScreeningImage = async (
       return null;
     }
 
-    // Check if patientId is a valid UUID
+    if (!patientId) {
+      console.error('Missing patient ID for image upload');
+      return null;
+    }
+
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(patientId)) {
       console.error('Invalid patient ID format:', patientId);
       return null;
     }
 
-    // Convert base64 to blob
     let base64Data = imageBase64;
     
-    // Check if the base64 string contains the data URL prefix
     if (base64Data.includes(',')) {
       base64Data = imageBase64.split(',')[1];
     }
@@ -63,13 +65,11 @@ export const uploadScreeningImage = async (
 
     const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
     
-    // Create a file from the blob
     const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
     const file = new File([blob], fileName, { type: 'image/jpeg' });
     
     console.log(`Uploading ${imageType} image, size: ${file.size} bytes, patient ID: ${patientId}`);
     
-    // Upload to Supabase storage
     const { data, error } = await supabase
       .storage
       .from('cervical_images')
@@ -82,7 +82,6 @@ export const uploadScreeningImage = async (
 
     console.log(`${imageType} image uploaded successfully:`, data);
 
-    // Get the public URL
     const { data: urlData } = supabase
       .storage
       .from('cervical_images')
@@ -103,21 +102,29 @@ export const ensurePatientExists = async (
   try {
     console.log("Ensuring patient exists with data:", JSON.stringify(patientData, null, 2));
     
-    // Check if this is a real patient ID already in the database
     if (patientData.id && patientData.id !== 'temp-patient-id') {
       console.log("Checking for existing patient with ID:", patientData.id);
-      const existingPatient = await getPatient(patientData.id);
-      if (existingPatient) {
-        console.log("Found existing patient:", existingPatient);
+      
+      const { data: patientExists, error: patientCheckError } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('id', patientData.id)
+        .single();
+      
+      if (patientCheckError) {
+        console.log("Error checking patient:", patientCheckError);
+      }
+      
+      if (patientExists) {
+        console.log("Found existing patient with direct query:", patientExists.id);
         return patientData.id;
       } else {
-        console.log("Patient ID provided but not found in database:", patientData.id);
+        console.log("Patient ID not found in database:", patientData.id);
       }
     } else {
       console.log("No valid patient ID provided, need to create a new patient");
     }
     
-    // If we reach here, we need to create a real patient
     const newPatient = {
       doctor_id: doctorId,
       first_name: patientData.firstName || patientData.first_name || 'Unknown',
@@ -159,7 +166,6 @@ export const saveScreeningResult = async (
       return null;
     }
 
-    // Validate required fields
     if (!result.patient_id) {
       console.error('Missing patient_id in screening result:', result);
       throw new Error('Missing patient information. Please register the patient again.');
@@ -170,14 +176,26 @@ export const saveScreeningResult = async (
       throw new Error('Missing doctor information. Please log in again.');
     }
 
+    const { data: existingPatient, error: patientCheckError } = await supabase
+      .from('patients')
+      .select('id')
+      .eq('id', result.patient_id)
+      .single();
+    
+    if (patientCheckError || !existingPatient) {
+      console.error('Patient does not exist in database:', result.patient_id, patientCheckError);
+      throw new Error('Patient does not exist in database. Please register the patient again.');
+    }
+
     console.log('Saving screening result with data:', { 
       patient_id: result.patient_id, 
       doctor_id: doctor.id,
       result: result.result,
-      confidence: result.confidence 
+      confidence: result.confidence,
+      before_image_url: result.before_image_url ? 'present' : 'missing',
+      after_image_url: result.after_image_url ? 'present' : 'missing'
     });
 
-    // Ensure doctor_id is set to the current doctor
     const resultWithDoctor = {
       ...result,
       doctor_id: doctor.id
@@ -196,7 +214,6 @@ export const saveScreeningResult = async (
 
     console.log('Screening result saved successfully:', data);
 
-    // Ensure the result is cast to the correct type
     return {
       ...data,
       result: data.result as 'positive' | 'negative'
@@ -228,7 +245,6 @@ export const getPatientScreeningResults = async (
       throw error;
     }
 
-    // Cast all results to the correct type
     return (data || []).map(item => ({
       ...item,
       result: item.result as 'positive' | 'negative'
@@ -260,7 +276,6 @@ export const getDoctorScreeningResults = async (
       throw error;
     }
 
-    // Cast all results to the correct type
     return (data || []).map(item => ({
       ...item,
       result: item.result as 'positive' | 'negative'
