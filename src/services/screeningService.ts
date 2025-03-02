@@ -9,10 +9,13 @@ export interface ScreeningResult {
   doctor_id: string;
   before_image_url?: string;
   after_image_url?: string;
+  image_url?: string;
   result: 'positive' | 'negative';
   confidence?: number;
   notes?: string;
   created_at?: string;
+  updated_at?: string;
+  patients?: any; // Add this to handle the joined data
 }
 
 // Upload an image to Supabase Storage
@@ -88,7 +91,11 @@ export const saveScreeningResult = async (
       throw error;
     }
 
-    return data;
+    // Ensure the result is cast to the correct type
+    return {
+      ...data,
+      result: data.result as 'positive' | 'negative'
+    } as ScreeningResult;
   } catch (error) {
     console.error('Error in saveScreeningResult:', error);
     return null;
@@ -116,7 +123,11 @@ export const getPatientScreeningResults = async (
       throw error;
     }
 
-    return data || [];
+    // Cast all results to the correct type
+    return (data || []).map(item => ({
+      ...item,
+      result: item.result as 'positive' | 'negative'
+    })) as ScreeningResult[];
   } catch (error) {
     console.error('Error in getPatientScreeningResults:', error);
     return [];
@@ -144,7 +155,11 @@ export const getDoctorScreeningResults = async (
       throw error;
     }
 
-    return data || [];
+    // Cast all results to the correct type
+    return (data || []).map(item => ({
+      ...item,
+      result: item.result as 'positive' | 'negative'
+    })) as ScreeningResult[];
   } catch (error) {
     console.error('Error in getDoctorScreeningResults:', error);
     return [];
