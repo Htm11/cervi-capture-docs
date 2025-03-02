@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
+import { supabase, hasValidSupabaseCredentials } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
 interface Doctor {
@@ -108,6 +108,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
+      // Check if we're using mock auth in development
+      if (!hasValidSupabaseCredentials()) {
+        // Mock successful login for development
+        const mockUser = {
+          id: 'mock-user-id',
+          name: email.split('@')[0] || 'Doctor',
+          email: email
+        };
+        setCurrentDoctor(mockUser);
+        
+        toast({
+          title: "Development mode",
+          description: `Logged in as ${mockUser.name} (mock authentication)`,
+        });
+        
+        return true;
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -149,6 +167,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
+      // Check if we're using mock auth in development
+      if (!hasValidSupabaseCredentials()) {
+        // Mock successful signup for development
+        toast({
+          title: "Development mode",
+          description: "Account created successfully (mock authentication)",
+        });
+        return true;
+      }
+      
       // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -209,22 +237,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('Logout error:', error);
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setCurrentDoctor(null);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
+    if (hasValidSupabaseCredentials()) {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        toast({
+          title: "Logout failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
+    
+    // Always clear local state
+    setCurrentDoctor(null);
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
   };
 
   return (

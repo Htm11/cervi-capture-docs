@@ -12,3 +12,10 @@ export const supabase = createClient(
   supabaseUrl || 'https://example.supabase.co',
   supabaseAnonKey || 'example-anon-key'
 );
+
+// This helper function checks if we have actual Supabase credentials
+export const hasValidSupabaseCredentials = () => {
+  return !!supabaseUrl && !!supabaseAnonKey && 
+    supabaseUrl !== 'https://example.supabase.co' && 
+    supabaseAnonKey !== 'example-anon-key';
+};

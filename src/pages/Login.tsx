@@ -1,18 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, Mail, Lock } from 'lucide-react';
+import { Loader2, User, Mail, Lock, Info } from 'lucide-react';
 import { 
   Tabs, 
   TabsContent, 
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
+import { hasValidSupabaseCredentials } from '@/lib/supabase';
 
 const Login = () => {
   // Login form state
@@ -32,8 +33,21 @@ const Login = () => {
     confirmPassword: '' 
   });
   
-  const { login, signUp, isLoading } = useAuth();
+  // Development mode indicator
+  const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
+  
+  const { login, signUp, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Check if we're in development mode
+    setIsDevelopmentMode(!hasValidSupabaseCredentials());
+    
+    // If already authenticated, redirect to patient registration
+    if (isAuthenticated) {
+      navigate('/patient-registration');
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
@@ -141,6 +155,16 @@ const Login = () => {
             />
             <p className="text-cervi-800 text-lg font-medium">Welcome to Cervi Scanner</p>
           </div>
+
+          {isDevelopmentMode && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
+              <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-medium">Development Mode</p>
+                <p>Supabase credentials not detected. Using mock authentication. Any email/password will work.</p>
+              </div>
+            </div>
+          )}
 
           <div className="glass bg-white/90 p-6 rounded-xl shadow-lg border border-cervi-200">
             <Tabs defaultValue="login">
