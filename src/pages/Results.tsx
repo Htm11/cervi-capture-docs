@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -44,34 +45,55 @@ const Results = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   
+  const fetchResults = async () => {
+    setIsLoading(true);
+    
+    try {
+      if (currentDoctor?.id) {
+        console.log('Fetching results for doctor ID:', currentDoctor.id);
+        const doctorResults = await getDoctorScreeningResults(currentDoctor.id);
+        console.log('Loaded results from database:', doctorResults);
+        
+        if (Array.isArray(doctorResults) && doctorResults.length > 0) {
+          setResults(doctorResults);
+        } else {
+          console.log('No results found or empty array returned');
+        }
+      } else {
+        console.error('No doctor ID available');
+      }
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      toast({
+        title: "Error loading results",
+        description: "There was a problem loading your screening results.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     
-    const fetchResults = async () => {
-      setIsLoading(true);
-      
-      try {
-        if (currentDoctor?.id) {
-          const doctorResults = await getDoctorScreeningResults(currentDoctor.id);
-          console.log('Loaded results from database:', doctorResults);
-          setResults(doctorResults);
-        }
-      } catch (error) {
-        console.error('Error fetching results:', error);
-        toast({
-          title: "Error loading results",
-          description: "There was a problem loading your screening results.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+    fetchResults();
+    
+    // Add event listener for storage changes to refresh results when they're updated
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'resultsHistory') {
+        fetchResults();
       }
     };
     
-    fetchResults();
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [isAuthenticated, navigate, currentDoctor, toast]);
   
   const filteredResults = results.filter(result => {
@@ -145,11 +167,32 @@ const Results = () => {
     setDeleteId(null);
   };
   
+  const handleRefresh = () => {
+    fetchResults();
+    toast({
+      title: "Refreshing results",
+      description: "Fetching the latest screening results.",
+    });
+  };
+  
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Patient Results History</h1>
+          <Button 
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 3V8H16" />
+              <path d="M3 16V21H8" />
+              <path d="M16 3.83C17.7659 4.55949 19.2539 5.84292 20.2194 7.49479C21.1849 9.14666 21.5763 11.0753 21.3346 12.977C21.093 14.8788 20.2318 16.6483 18.8833 17.9966C17.5348 19.3449 15.7652 20.2059 13.8635 20.4473C11.9617 20.6887 10.0331 20.2971 8.38127 19.3314C6.72944 18.3658 5.44607 16.8776 4.71665 15.1117C3.98724 13.3458 3.84618 11.3975 4.31149 9.54996C4.7768 7.70243 5.82373 6.04368 7.3 4.83" />
+            </svg>
+            Refresh
+          </Button>
         </div>
         
         <div className="relative mb-6">
