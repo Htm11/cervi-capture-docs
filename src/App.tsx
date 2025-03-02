@@ -13,15 +13,19 @@ import Feedback from "./pages/Feedback";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 
+// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      {/* Toast notifications must be available at the root */}
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
+      
+      {/* BrowserRouter should wrap the AuthProvider to ensure correct context flow */}
+      <BrowserRouter>
+        <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -31,8 +35,8 @@ const App = () => (
             <Route path="/results" element={<Results />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
