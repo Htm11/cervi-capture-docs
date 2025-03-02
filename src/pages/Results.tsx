@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -86,6 +87,7 @@ const Results = () => {
   
   const handleResultClick = (result: ScreeningResult) => {
     if (result.id) {
+      console.log('Navigating to result detail:', result.id);
       navigate(`/results/${result.id}`);
     }
   };

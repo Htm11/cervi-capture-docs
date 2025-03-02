@@ -179,11 +179,15 @@ const ResultDetail = () => {
             
             <TabsContent value="before-acetic" className="pt-2">
               {result.before_image_url ? (
-                <div className="border border-border rounded-lg overflow-hidden bg-black">
+                <div className="border border-border rounded-lg overflow-hidden bg-black flex items-center justify-center">
                   <img 
                     src={result.before_image_url} 
                     alt="Before acetic acid" 
-                    className="w-full object-contain max-h-[300px] mx-auto"
+                    className="w-full object-contain max-h-[300px]"
+                    onError={(e) => {
+                      console.error('Error loading before image:', e);
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
                   />
                 </div>
               ) : (
@@ -195,11 +199,15 @@ const ResultDetail = () => {
             
             <TabsContent value="after-acetic" className="pt-2">
               {result.after_image_url ? (
-                <div className="border border-border rounded-lg overflow-hidden bg-black">
+                <div className="border border-border rounded-lg overflow-hidden bg-black flex items-center justify-center">
                   <img 
                     src={result.after_image_url} 
                     alt="After acetic acid" 
-                    className="w-full object-contain max-h-[300px] mx-auto"
+                    className="w-full object-contain max-h-[300px]"
+                    onError={(e) => {
+                      console.error('Error loading after image:', e);
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
                   />
                 </div>
               ) : (
