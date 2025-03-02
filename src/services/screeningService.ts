@@ -4,10 +4,20 @@ import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
 import { getPatient, createPatient } from './patientService';
 import { isValidUUID } from '@/utils/ImageUtils';
-import { uploadScreeningImage, saveScreeningResult, verifyPatientExists } from './ResultsService';
+import { 
+  uploadScreeningImage, 
+  saveScreeningResult, 
+  verifyPatientExists,
+  getPatientIdByDetails 
+} from './ResultsService';
 
 // Re-export functions from ResultsService for backward compatibility
-export { uploadScreeningImage, saveScreeningResult, verifyPatientExists };
+export { 
+  uploadScreeningImage, 
+  saveScreeningResult, 
+  verifyPatientExists,
+  getPatientIdByDetails 
+};
 
 export interface ScreeningResult {
   id?: string;
@@ -44,7 +54,7 @@ export const ensurePatientExists = async (
       throw new Error('No doctor ID provided');
     }
     
-    // Check if valid patient ID is provided
+    // Check if valid patient ID is provided and exists in database
     if (patientData.id && patientData.id !== 'temp-patient-id' && isValidUUID(patientData.id)) {
       console.log("Checking for existing patient with ID:", patientData.id);
       
@@ -57,7 +67,25 @@ export const ensurePatientExists = async (
         console.log("Patient ID not found in database:", patientData.id);
       }
     } else {
-      console.log("No valid patient ID provided, need to create a new patient");
+      console.log("No valid patient ID provided, trying to find by details...");
+      
+      // Try to find patient by name and DOB if ID is not valid
+      const firstName = patientData.firstName || patientData.first_name || '';
+      const lastName = patientData.lastName || patientData.last_name || '';
+      const dateOfBirth = patientData.dateOfBirth instanceof Date 
+        ? patientData.dateOfBirth.toISOString().split('T')[0] 
+        : (typeof patientData.dateOfBirth === 'string' 
+            ? patientData.dateOfBirth 
+            : (patientData.date_of_birth || ''));
+      
+      if (firstName && lastName && dateOfBirth) {
+        const existingPatientId = await getPatientIdByDetails(firstName, lastName, dateOfBirth, doctorId);
+        
+        if (existingPatientId) {
+          console.log("Found patient by details, using ID:", existingPatientId);
+          return existingPatientId;
+        }
+      }
     }
     
     // Create new patient with standardized data
