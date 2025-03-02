@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ScreeningResult } from '@/services/screeningService';
 import { format } from 'date-fns';
@@ -28,7 +29,7 @@ interface MedicalHistoryProps {
 }
 
 const MedicalHistory = ({ result }: MedicalHistoryProps) => {
-  const formatMedicalHistory = (medicalHistoryData: string | null) => {
+  const formatMedicalHistory = (medicalHistoryData: string | any | null) => {
     if (!medicalHistoryData) return null;
     
     try {
@@ -42,7 +43,7 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
           return <p className="text-red-500">Error parsing medical history</p>;
         }
       } else {
-        medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
+        medicalHistory = medicalHistoryData as MedicalHistoryData;
       }
       
       console.log('Formatting medical history:', JSON.stringify(medicalHistory, null, 2));
@@ -104,7 +105,7 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Medical Conditions</div>
               <div className="font-medium">
-                {medicalHistory.medical?.conditions ? (
+                {medicalHistory.medical && medicalHistory.medical.conditions ? (
                   Array.isArray(medicalHistory.medical.conditions) ? (
                     medicalHistory.medical.conditions.length > 0 ? (
                       medicalHistory.medical.conditions.includes("None") ? (
@@ -126,7 +127,7 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
               
               <div className="text-muted-foreground">Symptoms</div>
               <div className="font-medium">
-                {medicalHistory.medical?.symptoms ? (
+                {medicalHistory.medical && medicalHistory.medical.symptoms ? (
                   Array.isArray(medicalHistory.medical.symptoms) ? (
                     medicalHistory.medical.symptoms.length > 0 ? (
                       medicalHistory.medical.symptoms.includes("None") ? (
@@ -146,14 +147,14 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
                 ) : "None"}
               </div>
               
-              {medicalHistory.medical?.reproductiveHistory && (
+              {medicalHistory.medical && medicalHistory.medical.reproductiveHistory && (
                 <>
                   <div className="text-muted-foreground">Reproductive History</div>
                   <div className="font-medium">{medicalHistory.medical.reproductiveHistory}</div>
                 </>
               )}
               
-              {medicalHistory.medical?.lastVisaExamResults && (
+              {medicalHistory.medical && medicalHistory.medical.lastVisaExamResults && (
                 <>
                   <div className="text-muted-foreground">Last Visa Exam Results</div>
                   <div className="font-medium">{medicalHistory.medical.lastVisaExamResults}</div>
