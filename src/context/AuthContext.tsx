@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Doctor, AuthContextType } from '@/types/auth';
 import { loginUser, registerUser, logoutUser, checkSession } from '@/services/authService';
+import { migrateLocalStorageToSupabase } from '@/services/patientService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -57,6 +58,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setCurrentDoctor(doctor);
       localStorage.setItem('cerviDoctor', JSON.stringify(doctor));
+      
+      // Attempt to migrate any local data to Supabase
+      if (doctor.id) {
+        try {
+          const migrationSuccess = await migrateLocalStorageToSupabase(doctor.id);
+          if (migrationSuccess) {
+            console.log('Successfully migrated local data to Supabase');
+          } else {
+            console.warn('There may have been issues migrating local data');
+          }
+        } catch (migrationError) {
+          console.error('Error during data migration:', migrationError);
+        }
+      }
       
       toast({
         title: "Login successful",

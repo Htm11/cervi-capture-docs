@@ -1,7 +1,5 @@
-
 import { supabase } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
-import { useAuth } from '@/context/AuthContext';
 
 // Patient CRUD operations
 export const createPatient = async (patientData: Patient): Promise<{ data: Patient | null, error: any }> => {
@@ -229,7 +227,7 @@ export const migrateLocalStorageToSupabase = async (doctorId: string): Promise<b
       const screeningData: ScreeningResult = {
         patient_id: patientRecord.id!,
         doctor_id: doctorId,
-        analysisResult: result.analysisResult,
+        analysisResult: result.analysisResult === 'positive' ? 'positive' : 'negative',
         analysisDate: result.analysisDate || new Date().toISOString(),
         beforeAceticImage: beforeImageUrl || undefined,
         afterAceticImage: afterImageUrl || undefined
