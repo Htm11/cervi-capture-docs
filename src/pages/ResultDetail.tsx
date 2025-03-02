@@ -17,7 +17,6 @@ const ResultDetail = () => {
   const { toast } = useToast();
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPatientInfoOpen, setIsPatientInfoOpen] = useState(false);
   
   useEffect(() => {
     const fetchResultDetail = async () => {
@@ -47,6 +46,44 @@ const ResultDetail = () => {
         
         if (data) {
           console.log('Loaded result detail:', data);
+          
+          // For debugging - log the medical history
+          if (data.patients?.medical_history) {
+            console.log('Medical history raw:', data.patients.medical_history);
+            
+            // Try to parse if it's a string
+            if (typeof data.patients.medical_history === 'string') {
+              try {
+                const parsed = JSON.parse(data.patients.medical_history);
+                console.log('Medical history parsed:', parsed);
+                
+                if (parsed.medical && parsed.medical.conditions) {
+                  console.log('Medical conditions:', parsed.medical.conditions);
+                }
+                
+                if (parsed.medical && parsed.medical.symptoms) {
+                  console.log('Symptoms:', parsed.medical.symptoms);
+                }
+              } catch (e) {
+                console.error('Error parsing medical history:', e);
+              }
+            } else {
+              // It's already an object
+              console.log('Medical history (object):', data.patients.medical_history);
+              
+              if (data.patients.medical_history.medical && 
+                  data.patients.medical_history.medical.conditions) {
+                console.log('Medical conditions:', 
+                  data.patients.medical_history.medical.conditions);
+              }
+              
+              if (data.patients.medical_history.medical && 
+                  data.patients.medical_history.medical.symptoms) {
+                console.log('Symptoms:', 
+                  data.patients.medical_history.medical.symptoms);
+              }
+            }
+          }
           
           // Ensure the image URLs are properly formed
           if (data.before_image_url) {
@@ -119,6 +156,8 @@ const ResultDetail = () => {
         ? JSON.parse(medicalHistoryData) 
         : medicalHistoryData;
       
+      console.log('Formatting medical history:', JSON.stringify(medicalHistory, null, 2));
+      
       return (
         <div className="space-y-3">
           {/* Patient Information */}
@@ -186,17 +225,31 @@ const ResultDetail = () => {
               <div className="grid grid-cols-2 gap-y-2 text-sm">
                 <div className="text-muted-foreground">Medical Conditions</div>
                 <div className="font-medium">
-                  {medicalHistory.medical.conditions && Array.isArray(medicalHistory.medical.conditions) && medicalHistory.medical.conditions.length > 0
-                    ? medicalHistory.medical.conditions.join(', ')
-                    : 'None'}
+                  {medicalHistory.medical.conditions && Array.isArray(medicalHistory.medical.conditions) ? (
+                    medicalHistory.medical.conditions.length > 0 ? (
+                      <ul className="list-disc pl-5 space-y-1">
+                        {medicalHistory.medical.conditions.map((condition: string, index: number) => (
+                          <li key={index}>{condition}</li>
+                        ))}
+                      </ul>
+                    ) : 'None'
+                  ) : typeof medicalHistory.medical.conditions === 'string' ? 
+                      medicalHistory.medical.conditions : 'None'}
                 </div>
                 
                 {/* Symptoms */}
                 <div className="text-muted-foreground">Symptoms</div>
                 <div className="font-medium">
-                  {medicalHistory.medical.symptoms && Array.isArray(medicalHistory.medical.symptoms) && medicalHistory.medical.symptoms.length > 0 
-                    ? medicalHistory.medical.symptoms.join(', ')
-                    : 'None'}
+                  {medicalHistory.medical.symptoms && Array.isArray(medicalHistory.medical.symptoms) ? (
+                    medicalHistory.medical.symptoms.length > 0 ? (
+                      <ul className="list-disc pl-5 space-y-1">
+                        {medicalHistory.medical.symptoms.map((symptom: string, index: number) => (
+                          <li key={index}>{symptom}</li>
+                        ))}
+                      </ul>
+                    ) : 'None'
+                  ) : typeof medicalHistory.medical.symptoms === 'string' ? 
+                      medicalHistory.medical.symptoms : 'None'}
                 </div>
                 
                 {/* Reproductive History */}
