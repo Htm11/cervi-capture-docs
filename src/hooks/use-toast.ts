@@ -5,7 +5,7 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 10
+const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
@@ -42,11 +42,11 @@ type Action =
     }
   | {
       type: ActionType["DISMISS_TOAST"]
-      toastId?: string
+      toastId?: ToasterToast["id"]
     }
   | {
       type: ActionType["REMOVE_TOAST"]
-      toastId?: string
+      toastId?: ToasterToast["id"]
     }
 
 interface State {
@@ -112,7 +112,6 @@ export const reducer = (state: State, action: Action): State => {
         ),
       }
     }
-    
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
         return {
@@ -189,35 +188,4 @@ function useToast() {
   }
 }
 
-// Re-export the proper toast utilities
 export { useToast, toast }
-
-// Helper toast functions with pre-defined configurations
-export const customToast = {
-  success: (message: string) => {
-    toast({
-      title: "Success",
-      description: message,
-    });
-  },
-  error: (message: string) => {
-    toast({
-      title: "Error",
-      description: message,
-      variant: "destructive",
-    });
-  },
-  info: (message: string) => {
-    toast({
-      title: "Info",
-      description: message,
-    });
-  },
-  warning: (message: string) => {
-    toast({
-      title: "Warning",
-      description: message,
-      variant: "destructive",
-    });
-  },
-};
