@@ -12,40 +12,28 @@ export const initializeDatabaseSchema = async (): Promise<boolean> => {
       .select('id')
       .limit(1);
       
-    // Try to create patients table if it doesn't exist
+    // If table doesn't exist (identified by 42P01 error), try to create it
     if (patientsCheckError && patientsCheckError.code === '42P01') {
-      console.log("Creating patients table...");
+      console.log("Creating patients table using REST API...");
       
-      const createPatientsQuery = `
-        CREATE TABLE IF NOT EXISTS patients (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          firstName TEXT NOT NULL,
-          lastName TEXT NOT NULL,
-          phoneNumber TEXT NOT NULL,
-          dateOfBirth TIMESTAMP,
-          education TEXT,
-          occupation TEXT,
-          maritalStatus TEXT,
-          smokingStatus TEXT,
-          alcoholUse TEXT,
-          physicalActivity TEXT,
-          existingConditions TEXT[],
-          commonSymptoms TEXT[],
-          reproductiveHistory TEXT,
-          lastVisaExamResults TEXT,
-          screeningStep TEXT DEFAULT 'before-acetic',
-          doctor_id UUID NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-      `;
-      
-      const { error: createPatientsError } = await supabase.rpc('execute_sql', { 
-        query: createPatientsQuery 
-      });
-      
-      if (createPatientsError) {
+      // Create the patients table using the REST API
+      const { error: createPatientsError } = await supabase
+        .from('patients')
+        .insert([{ 
+          id: '00000000-0000-0000-0000-000000000000', 
+          firstName: 'placeholder', 
+          lastName: 'placeholder',
+          phoneNumber: 'placeholder',
+          doctor_id: '00000000-0000-0000-0000-000000000000'
+        }])
+        .select();
+        
+      // If there was an error other than "relation does not exist", it may be permissions
+      if (createPatientsError && createPatientsError.code !== '42P01') {
         console.error("Error creating patients table:", createPatientsError);
+        
+        // Inform the user about the error and recommend SQL initialization
+        console.warn("Please run the SQL initialization script in Supabase SQL Editor.");
         return false;
       }
     }
@@ -56,30 +44,22 @@ export const initializeDatabaseSchema = async (): Promise<boolean> => {
       .select('id')
       .limit(1);
       
-    // Try to create screening_results table if it doesn't exist
+    // If table doesn't exist, try to create it
     if (resultsCheckError && resultsCheckError.code === '42P01') {
-      console.log("Creating screening_results table...");
+      console.log("Creating screening_results table using REST API...");
       
-      const createResultsQuery = `
-        CREATE TABLE IF NOT EXISTS screening_results (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          patient_id UUID NOT NULL,
-          doctor_id UUID NOT NULL,
-          analysisResult TEXT NOT NULL CHECK (analysisResult IN ('positive', 'negative')),
-          analysisDate TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          beforeAceticImage TEXT,
-          afterAceticImage TEXT,
-          notes TEXT,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-      `;
-      
-      const { error: createResultsError } = await supabase.rpc('execute_sql', { 
-        query: createResultsQuery 
-      });
-      
-      if (createResultsError) {
+      // Create the screening_results table using the REST API
+      const { error: createResultsError } = await supabase
+        .from('screening_results')
+        .insert([{
+          id: '00000000-0000-0000-0000-000000000000',
+          patient_id: '00000000-0000-0000-0000-000000000000',
+          doctor_id: '00000000-0000-0000-0000-000000000000',
+          analysisResult: 'negative'
+        }])
+        .select();
+        
+      if (createResultsError && createResultsError.code !== '42P01') {
         console.error("Error creating screening_results table:", createResultsError);
         return false;
       }

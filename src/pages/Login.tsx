@@ -5,11 +5,11 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Mail, Lock, User } from 'lucide-react';
+import { Loader2, Mail, Lock, User, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import FormField from '@/components/FormField';
 import { initializeDatabaseSchema } from '@/services/patientService';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
   // Login state
@@ -34,22 +34,33 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("login");
   const { toast } = useToast();
   const [isInitializing, setIsInitializing] = useState(false);
+  const [dbInitError, setDbInitError] = useState<string | null>(null);
 
   // Function to initialize database schema
   const ensureDatabaseSetup = async () => {
     setIsInitializing(true);
-    const success = await initializeDatabaseSchema();
-    setIsInitializing(false);
+    setDbInitError(null);
     
-    if (!success) {
-      toast({
-        title: "Database Initialization Failed",
-        description: "There was an error setting up the database. Some features may not work correctly.",
-        variant: "destructive"
-      });
+    try {
+      const success = await initializeDatabaseSchema();
+      
+      if (!success) {
+        setDbInitError("Unable to set up database tables. Your account is created but you might encounter errors when saving data.");
+        toast({
+          title: "Database Initialization Failed",
+          description: "There was an error setting up the database. Some features may not work correctly.",
+          variant: "destructive"
+        });
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Database initialization error:", error);
+      setDbInitError("Error initializing database: " + (error instanceof Error ? error.message : String(error)));
+      return false;
+    } finally {
+      setIsInitializing(false);
     }
-    
-    return success;
   };
 
   const validateLoginForm = () => {
@@ -160,6 +171,15 @@ const Login = () => {
           </div>
 
           <div className="glass bg-white/90 p-8 rounded-xl shadow-lg border border-cervi-200">
+            {dbInitError && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {dbInitError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Login</TabsTrigger>
