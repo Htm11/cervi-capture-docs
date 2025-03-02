@@ -9,6 +9,11 @@ const BottomMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Hide menu on index page and login page
+  if (location.pathname === '/' || location.pathname === '/login') {
+    return null;
+  }
+  
   // Determine which menu item is active
   const isNewScanActive = location.pathname === '/patient-registration' || location.pathname === '/camera' || location.pathname === '/feedback';
   const isResultsActive = location.pathname === '/results';

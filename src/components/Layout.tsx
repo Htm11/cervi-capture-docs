@@ -10,7 +10,7 @@ interface LayoutProps {
   className?: string;
   hideHeader?: boolean;
   hideBottomMenu?: boolean;
-  showBackButton?: boolean; // Add this new prop
+  showBackButton?: boolean;
 }
 
 const Layout = ({ 
@@ -18,15 +18,15 @@ const Layout = ({
   className, 
   hideHeader = false, 
   hideBottomMenu = false,
-  showBackButton = false // Add default value for the new prop
+  showBackButton = false
 }: LayoutProps) => {
   const location = useLocation();
   
   // Generate a unique key for page transitions based on the current route
   const pageKey = location.pathname;
   
-  // Hide bottom menu on login page
-  const shouldShowBottomMenu = !hideBottomMenu && location.pathname !== '/login';
+  // Hide bottom menu on login page and index page
+  const shouldShowBottomMenu = !hideBottomMenu && location.pathname !== '/login' && location.pathname !== '/';
   
   return (
     <div className="min-h-screen bg-background flex flex-col">

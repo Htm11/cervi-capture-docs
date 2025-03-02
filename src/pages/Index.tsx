@@ -18,7 +18,7 @@ const Index = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <Layout hideHeader>
+    <Layout hideHeader hideBottomMenu>
       <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gradient-to-b from-cervi-50 to-white">
         <div className="w-full max-w-md text-center">
           <div className="mb-8">
