@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { Doctor } from '@/types/auth';
@@ -73,6 +74,8 @@ export const saveScreeningResult = async (
       return null;
     }
 
+    console.log("Saving screening result:", result);
+
     // Ensure doctor_id is set to the current doctor
     const resultWithDoctor = {
       ...result,
@@ -89,6 +92,8 @@ export const saveScreeningResult = async (
       console.error('Error saving screening result:', error);
       throw error;
     }
+
+    console.log("Successfully saved result:", data);
 
     // Ensure the result is cast to the correct type
     return {
@@ -143,6 +148,9 @@ export const getDoctorScreeningResults = async (
       return [];
     }
 
+    console.log("Fetching results for doctor:", doctorId);
+
+    // Use patients!inner(*) to join with patients table and get patient data
     const { data, error } = await supabase
       .from('screening_results')
       .select('*, patients!inner(*)')
@@ -152,6 +160,23 @@ export const getDoctorScreeningResults = async (
     if (error) {
       console.error('Error fetching doctor screening results:', error);
       throw error;
+    }
+
+    console.log("Raw results from database:", data);
+
+    // If no results, log to understand why
+    if (!data || data.length === 0) {
+      // Check if there are any results without the join
+      const { data: checkData, error: checkError } = await supabase
+        .from('screening_results')
+        .select('*')
+        .eq('doctor_id', doctorId);
+      
+      console.log("Checking if any results exist without join:", checkData);
+      
+      if (checkError) {
+        console.error('Error checking for results:', checkError);
+      }
     }
 
     // Cast all results to the correct type

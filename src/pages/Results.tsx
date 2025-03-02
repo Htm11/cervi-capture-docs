@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -60,7 +61,10 @@ const Results = () => {
   }, [isAuthenticated, navigate, currentDoctor, toast]);
   
   const filteredResults = results.filter(result => {
-    if (!result.patients) return false;
+    if (!result.patients) {
+      // If there's no patient data, include in results but can't search
+      return !searchTerm;
+    }
     
     const patientName = `${result.patients.first_name} ${result.patients.last_name}`.toLowerCase();
     const patientPhone = result.patients.contact_number || '';
@@ -178,12 +182,16 @@ const Results = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-medium">
-                      {result.patients?.first_name} {result.patients?.last_name}
+                      {result.patients ? 
+                        `${result.patients.first_name} ${result.patients.last_name}` : 
+                        `Patient ID: ${result.patient_id.substring(0, 8)}...`}
                     </h3>
-                    <div className="flex items-center text-sm text-muted-foreground mt-1">
-                      <Phone className="h-3 w-3 mr-1" />
-                      <span>{result.patients?.contact_number || 'No phone number'}</span>
-                    </div>
+                    {result.patients && (
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
+                        <Phone className="h-3 w-3 mr-1" />
+                        <span>{result.patients.contact_number || 'No phone number'}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {result.result === 'positive' ? (
