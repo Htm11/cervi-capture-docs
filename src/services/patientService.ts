@@ -1,89 +1,179 @@
+
 import { supabase } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
 
 // Function to initialize database schema if needed
-export const initializeDatabaseSchema = async (): Promise<boolean> => {
+export const initializeDatabaseSchema = async (): Promise<{ success: boolean, error?: string }> => {
   try {
     console.log("Checking and initializing database schema...");
     
-    // Check if 'patients' table exists
-    const { error: patientsCheckError } = await supabase
+    // First, we'll create the SQL schema function on Supabase if it doesn't exist
+    const { data: funcExists, error: funcError } = await supabase.rpc('function_exists', { 
+      function_name: 'execute_schema_setup' 
+    });
+    
+    // If the function doesn't exist, we need to create it
+    if (!funcExists || funcError) {
+      console.log("Creating schema setup function...");
+      
+      // Create the SQL function to set up schema
+      const { error: createFuncError } = await supabase.rpc('create_schema_function', {
+        function_sql: `
+          CREATE OR REPLACE FUNCTION execute_schema_setup()
+          RETURNS boolean
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $$
+          BEGIN
+            -- Create patients table if it doesn't exist
+            CREATE TABLE IF NOT EXISTS patients (
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              "firstName" TEXT NOT NULL,
+              "lastName" TEXT NOT NULL,
+              "phoneNumber" TEXT NOT NULL,
+              "dateOfBirth" TIMESTAMP,
+              education TEXT,
+              occupation TEXT,
+              "maritalStatus" TEXT,
+              "smokingStatus" TEXT,
+              "alcoholUse" TEXT,
+              "physicalActivity" TEXT,
+              "existingConditions" TEXT[],
+              "commonSymptoms" TEXT[],
+              "reproductiveHistory" TEXT,
+              "lastVisaExamResults" TEXT,
+              "screeningStep" TEXT DEFAULT 'before-acetic',
+              doctor_id UUID NOT NULL,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+
+            -- Create screening_results table if it doesn't exist
+            CREATE TABLE IF NOT EXISTS screening_results (
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              patient_id UUID NOT NULL,
+              doctor_id UUID NOT NULL,
+              "analysisResult" TEXT NOT NULL CHECK ("analysisResult" IN ('positive', 'negative')),
+              "analysisDate" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              "beforeAceticImage" TEXT,
+              "afterAceticImage" TEXT,
+              notes TEXT,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+
+            -- Set up storage bucket
+            BEGIN
+              INSERT INTO storage.buckets (id, name, public) 
+              VALUES ('cervical_images', 'cervical_images', true)
+              ON CONFLICT (id) DO NOTHING;
+            EXCEPTION
+              WHEN OTHERS THEN
+                NULL;
+            END;
+
+            RETURN TRUE;
+          END;
+          $$;
+        `
+      });
+      
+      if (createFuncError) {
+        console.error("Error creating schema function:", createFuncError);
+        return { success: false, error: "Failed to create database setup function" };
+      }
+    }
+    
+    // Now execute the function to set up the schema
+    const { error: execError } = await supabase.rpc('execute_schema_setup');
+    
+    if (execError) {
+      console.error("Error executing schema setup:", execError);
+      
+      // Try alternative approach with direct table creation using insert
+      return await createTablesDirectly();
+    }
+    
+    console.log("Database schema setup completed successfully");
+    return { success: true };
+  } catch (error) {
+    console.error("Error initializing database schema:", error);
+    
+    // Try alternative approach
+    return await createTablesDirectly();
+  }
+};
+
+// Fallback method to create tables directly via inserts
+const createTablesDirectly = async (): Promise<{ success: boolean, error?: string }> => {
+  try {
+    console.log("Attempting direct table creation via inserts...");
+    
+    // Try to create patients table by inserting a test record
+    const { error: patientError } = await supabase
       .from('patients')
+      .insert({
+        firstName: 'Test',
+        lastName: 'User',
+        phoneNumber: '1234567890',
+        doctor_id: '00000000-0000-0000-0000-000000000000',
+        screeningStep: 'completed'
+      })
       .select('id')
-      .limit(1);
-      
-    // If table doesn't exist (identified by 42P01 error), try to create it
-    if (patientsCheckError && patientsCheckError.code === '42P01') {
-      console.log("Creating patients table using REST API...");
-      
-      // Create the patients table using the REST API
-      const { error: createPatientsError } = await supabase
-        .from('patients')
-        .insert([{ 
-          id: '00000000-0000-0000-0000-000000000000', 
-          firstName: 'placeholder', 
-          lastName: 'placeholder',
-          phoneNumber: 'placeholder',
-          doctor_id: '00000000-0000-0000-0000-000000000000'
-        }])
-        .select();
-        
-      // If there was an error other than "relation does not exist", it may be permissions
-      if (createPatientsError && createPatientsError.code !== '42P01') {
-        console.error("Error creating patients table:", createPatientsError);
-        
-        // Inform the user about the error and recommend SQL initialization
-        console.warn("Please run the SQL initialization script in Supabase SQL Editor.");
-        return false;
-      }
+      .single();
+    
+    // If there's an error that's not just a constraint violation, the table might not exist
+    if (patientError && patientError.code !== '23505') {
+      console.error("Error with patients table:", patientError);
+      return { 
+        success: false, 
+        error: "Could not create or access patients table. Please contact support or manually run the SQL setup script." 
+      };
     }
     
-    // Check if 'screening_results' table exists
-    const { error: resultsCheckError } = await supabase
+    // Try to create screening_results table by inserting a test record
+    const { error: resultError } = await supabase
       .from('screening_results')
+      .insert({
+        patient_id: '00000000-0000-0000-0000-000000000000',
+        doctor_id: '00000000-0000-0000-0000-000000000000',
+        analysisResult: 'negative'
+      })
       .select('id')
-      .limit(1);
-      
-    // If table doesn't exist, try to create it
-    if (resultsCheckError && resultsCheckError.code === '42P01') {
-      console.log("Creating screening_results table using REST API...");
-      
-      // Create the screening_results table using the REST API
-      const { error: createResultsError } = await supabase
-        .from('screening_results')
-        .insert([{
-          id: '00000000-0000-0000-0000-000000000000',
-          patient_id: '00000000-0000-0000-0000-000000000000',
-          doctor_id: '00000000-0000-0000-0000-000000000000',
-          analysisResult: 'negative'
-        }])
-        .select();
-        
-      if (createResultsError && createResultsError.code !== '42P01') {
-        console.error("Error creating screening_results table:", createResultsError);
-        return false;
-      }
+      .single();
+    
+    if (resultError && resultError.code !== '23505') {
+      console.error("Error with screening_results table:", resultError);
+      return { 
+        success: false, 
+        error: "Could not create or access screening_results table. Please contact support or manually run the SQL setup script." 
+      };
     }
     
-    // Create storage bucket for cervical images if it doesn't exist
-    const { error: storageError } = await supabase.storage.getBucket('cervical_images');
-    
-    if (storageError && storageError.status === 404) {
-      console.log("Creating storage bucket for cervical images...");
-      const { error: createBucketError } = await supabase.storage.createBucket('cervical_images', {
+    // Try to create storage bucket
+    try {
+      const { error: bucketError } = await supabase.storage.createBucket('cervical_images', {
         public: true
       });
       
-      if (createBucketError) {
-        console.error("Error creating storage bucket:", createBucketError);
-        return false;
+      if (bucketError && bucketError.status !== 409) { // 409 means it already exists
+        console.warn("Warning creating storage bucket:", bucketError);
       }
+    } catch (storageError) {
+      console.warn("Warning creating storage bucket:", storageError);
+      // Continue anyway, this is not critical
     }
     
-    return true;
+    console.log("Direct table creation completed");
+    return { success: true };
   } catch (error) {
-    console.error("Error initializing database schema:", error);
-    return false;
+    console.error("Error in direct table creation:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error 
+        ? `Database setup failed: ${error.message}` 
+        : "Database setup failed with unknown error" 
+    };
   }
 };
 

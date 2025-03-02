@@ -32,14 +32,26 @@ export const testSupabaseConnection = async () => {
     }
     
     // Try a simple query to test the connection
-    const { error } = await supabase.from('_dummy_query_').select('*').limit(1);
+    const { data, error: queryError } = await supabase
+      .from('patients')
+      .select('id')
+      .limit(1);
     
-    // If we get a "relation does not exist" error, the connection works but the table doesn't exist
-    // This is expected and means the connection is working
-    if (error && error.code === '42P01') {
-      return { success: true };
-    } else if (error) {
-      return { success: false, error: error.message };
+    if (queryError) {
+      // If the error code is 42P01, this means the table doesn't exist but connection works
+      if (queryError.code === '42P01') {
+        return { 
+          success: true, 
+          message: 'Connection successful but tables need to be created',
+          needsSetup: true 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: queryError.message || 'Unknown database error',
+        code: queryError.code
+      };
     }
     
     return { success: true };
@@ -47,6 +59,31 @@ export const testSupabaseConnection = async () => {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+};
+
+// Execute the SQL setup directly
+export const executeSchemaSetup = async () => {
+  try {
+    if (!supabase) {
+      return { success: false, error: 'Supabase client not initialized' };
+    }
+    
+    // Execute the schema SQL
+    const { error } = await supabase.rpc('execute_schema_setup');
+    
+    if (error) {
+      console.error('Error executing schema setup:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Schema setup error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error during schema setup'
     };
   }
 };
