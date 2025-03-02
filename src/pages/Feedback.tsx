@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
-import { saveResultToHistory } from './Results';
+import { saveResultToHistory } from '@/pages/Results';
 import { uploadScreeningImage, saveScreeningResult } from '@/services/screeningService';
 
 const steps: Step[] = [

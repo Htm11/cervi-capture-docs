@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -20,8 +19,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+export const saveResultToHistory = (patient: any) => {
+  try {
+    const resultsHistory = localStorage.getItem('resultsHistory');
+    let history = resultsHistory ? JSON.parse(resultsHistory) : [];
+    
+    history.push({
+      ...patient,
+      timestamp: new Date().toISOString()
+    });
+    
+    localStorage.setItem('resultsHistory', JSON.stringify(history));
+  } catch (error) {
+    console.error('Error saving to history:', error);
+  }
+};
+
 const Results = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<ScreeningResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,9 +54,8 @@ const Results = () => {
       setIsLoading(true);
       
       try {
-        if (user?.id) {
-          // Fetch results from the database
-          const doctorResults = await getDoctorScreeningResults(user.id);
+        if (currentDoctor?.id) {
+          const doctorResults = await getDoctorScreeningResults(currentDoctor.id);
           console.log('Loaded results from database:', doctorResults);
           setResults(doctorResults);
         }
@@ -58,9 +72,8 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [isAuthenticated, navigate, user, toast]);
+  }, [isAuthenticated, navigate, currentDoctor, toast]);
   
-  // Filter results based on search term
   const filteredResults = results.filter(result => {
     if (!result.patients) return false;
     
@@ -72,7 +85,6 @@ const Results = () => {
   });
   
   const handleResultClick = (result: ScreeningResult) => {
-    // Create patient object from the joined patients data
     const patient = {
       id: result.patient_id,
       firstName: result.patients?.first_name || '',
@@ -85,10 +97,7 @@ const Results = () => {
       afterAceticImage: result.after_image_url || '',
     };
     
-    // Set as current patient and navigate to feedback
     localStorage.setItem('currentPatient', JSON.stringify(patient));
-    
-    // Set the images
     localStorage.setItem('beforeAceticImage', patient.beforeAceticImage || '');
     localStorage.setItem('afterAceticImage', patient.afterAceticImage || '');
     
@@ -96,7 +105,7 @@ const Results = () => {
   };
   
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Prevent triggering the parent onClick
+    e.stopPropagation();
     setDeleteId(id);
   };
   
@@ -107,7 +116,6 @@ const Results = () => {
       const success = await deleteScreeningResult(deleteId);
       
       if (success) {
-        // Remove the deleted result from the state
         setResults(prevResults => prevResults.filter(r => r.id !== deleteId));
         
         toast({
@@ -144,7 +152,6 @@ const Results = () => {
           <h1 className="text-2xl font-bold">Patient Results History</h1>
         </div>
         
-        {/* Search input */}
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -210,7 +217,6 @@ const Results = () => {
                   </span>
                 </div>
                 
-                {/* Delete button */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -225,7 +231,6 @@ const Results = () => {
         )}
       </div>
       
-      {/* Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => !deleteId && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
