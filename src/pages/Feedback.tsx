@@ -29,7 +29,7 @@ const Feedback = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [resultSaved, setResultSaved] = useState<boolean>(false);
   
-  const [showAnimation, setShowAnimation] = useState(true);
+  const [analysisStep, setAnalysisStep] = useState<'quality-check' | 'analyzing' | 'complete'>('quality-check');
   const [countdown, setCountdown] = useState(3);
   
   useEffect(() => {
@@ -71,50 +71,51 @@ const Feedback = () => {
       const patient = JSON.parse(patientDataString);
       setPatientData(patient);
       
-      // Countdown timer for showing the result
-      const countdownInterval = setInterval(() => {
-        setCountdown(prevCount => {
-          if (prevCount <= 1) {
-            clearInterval(countdownInterval);
-            
-            // Generate random result for demo after countdown completes
-            const result = Math.random() > 0.5 ? 'positive' : 'negative';
-            setAnalysisResult(result);
-            
-            // Update patient data with result
-            const updatedPatient = {
-              ...patient,
-              analysisResult: result,
-              analysisDate: new Date().toISOString(),
-              beforeAceticImage: beforeAceticImage,
-              afterAceticImage: afterAceticImage
-            };
-            
-            // Save back to localStorage to preserve all data
-            localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
-            
-            // Save to history
-            saveResultToHistory(updatedPatient);
-            
-            window.dispatchEvent(new StorageEvent('storage', {
-              key: 'resultsHistory'
-            }));
-            
-            return 0;
-          }
-          return prevCount - 1;
-        });
-      }, 1000);
+      // Show quality check animation for 2 seconds
+      const qualityCheckTimer = setTimeout(() => {
+        // Move to analyzing step with countdown
+        setAnalysisStep('analyzing');
+        
+        // Start countdown timer
+        const countdownInterval = setInterval(() => {
+          setCountdown(prevCount => {
+            if (prevCount <= 1) {
+              clearInterval(countdownInterval);
+              setAnalysisStep('complete');
+              
+              // Generate random result for demo after countdown completes
+              const result = Math.random() > 0.5 ? 'positive' : 'negative';
+              setAnalysisResult(result);
+              
+              // Update patient data with result
+              const updatedPatient = {
+                ...patient,
+                analysisResult: result,
+                analysisDate: new Date().toISOString(),
+                beforeAceticImage: beforeAceticImage,
+                afterAceticImage: afterAceticImage
+              };
+              
+              // Save back to localStorage to preserve all data
+              localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
+              
+              // Save to history
+              saveResultToHistory(updatedPatient);
+              
+              window.dispatchEvent(new StorageEvent('storage', {
+                key: 'resultsHistory'
+              }));
+              
+              return 0;
+            }
+            return prevCount - 1;
+          });
+        }, 1000);
+        
+        return () => clearInterval(countdownInterval);
+      }, 2000);
       
-      // Hide animation after 2.5 seconds
-      const animationTimer = setTimeout(() => {
-        setShowAnimation(false);
-      }, 2500);
-      
-      return () => {
-        clearInterval(countdownInterval);
-        clearTimeout(animationTimer);
-      };
+      return () => clearTimeout(qualityCheckTimer);
     } catch (error) {
       console.error('Error processing patient data:', error);
       toast({
@@ -227,23 +228,55 @@ const Feedback = () => {
           className="mb-6"
         />
 
-        {showAnimation ? (
+        {analysisStep === 'quality-check' && (
           <div className="flex flex-col items-center justify-center p-6 animate-scale-in">
             <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
-            <h2 className="text-2xl font-semibold text-center mb-2">Analysis Complete</h2>
-            <p className="text-center text-muted-foreground">Your images have been analyzed and meet the quality requirements</p>
+            <h2 className="text-2xl font-semibold text-center mb-2">Quality Check</h2>
+            <p className="text-center text-muted-foreground">Verifying image quality...</p>
           </div>
-        ) : countdown > 0 ? (
-          <div className="flex flex-col items-center justify-center p-6 animate-pulse">
-            <div className="w-24 h-24 rounded-full bg-cervi-100 flex items-center justify-center mb-6">
+        )}
+        
+        {analysisStep === 'analyzing' && (
+          <div className="flex flex-col items-center justify-center p-6">
+            <div className="w-24 h-24 rounded-full bg-cervi-100 flex items-center justify-center mb-6 animate-pulse">
               <Timer className="h-12 w-12 text-cervi-600" />
             </div>
             <h2 className="text-3xl font-bold text-center mb-2">{countdown}</h2>
-            <p className="text-center text-muted-foreground">Analyzing results...</p>
+            <p className="text-center text-muted-foreground">Analyzing images...</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full max-w-xl">
+              {beforeImage && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-cervi-700">Before Acetic Acid</p>
+                  <div className="rounded-lg overflow-hidden border border-border">
+                    <img 
+                      src={beforeImage} 
+                      alt="Before acetic acid" 
+                      className="w-full object-contain max-h-[120px]"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {afterImage && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-cervi-700">After Acetic Acid</p>
+                  <div className="rounded-lg overflow-hidden border border-border">
+                    <img 
+                      src={afterImage} 
+                      alt="After acetic acid" 
+                      className="w-full object-contain max-h-[120px]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        ) : (
+        )}
+        
+        {analysisStep === 'complete' && (
           <>
             <div className="w-full mb-6">
               <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
