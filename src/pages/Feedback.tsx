@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -109,6 +108,16 @@ const Feedback = () => {
       return;
     }
     
+    // Check for valid patient ID (must be UUID)
+    if (!patientData.id || patientData.id === 'temp-patient-id') {
+      toast({
+        title: "Invalid patient ID",
+        description: "Please register the patient before saving results to the database",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSaving(true);
     
     try {
@@ -116,20 +125,20 @@ const Feedback = () => {
       const beforeImageUrl = await uploadScreeningImage(
         beforeImage,
         currentDoctor.id,
-        patientData.id || 'temp-patient-id',
+        patientData.id,
         'before'
       );
       
       const afterImageUrl = await uploadScreeningImage(
         afterImage,
         currentDoctor.id,
-        patientData.id || 'temp-patient-id',
+        patientData.id,
         'after'
       );
       
       // Then save the screening result to the database
       const screeningResult = {
-        patient_id: patientData.id || 'temp-patient-id',
+        patient_id: patientData.id,
         doctor_id: currentDoctor.id,
         before_image_url: beforeImageUrl,
         after_image_url: afterImageUrl,

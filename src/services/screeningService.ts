@@ -17,6 +17,12 @@ export interface ScreeningResult {
   patients?: any; // Add this to handle the joined data
 }
 
+// Helper to validate UUID
+const isValidUUID = (uuid: string) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+};
+
 // Upload an image to Supabase Storage
 export const uploadScreeningImage = async (
   imageBase64: string,
@@ -71,6 +77,17 @@ export const saveScreeningResult = async (
     if (!supabase) {
       console.error('Supabase client is not initialized');
       return null;
+    }
+    
+    // Validate patient_id and doctor_id are valid UUIDs
+    if (!isValidUUID(result.patient_id)) {
+      console.error('Invalid patient_id format:', result.patient_id);
+      throw new Error('Patient ID must be a valid UUID');
+    }
+    
+    if (!isValidUUID(doctor.id)) {
+      console.error('Invalid doctor_id format:', doctor.id);
+      throw new Error('Doctor ID must be a valid UUID');
     }
 
     // Ensure doctor_id is set to the current doctor
