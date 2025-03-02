@@ -1,12 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Camera, Home, Image as ImageIcon, XCircle } from 'lucide-react';
+import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
+import { saveResultToHistory } from './Results';
 
 const steps: Step[] = [
   { id: 1, label: "Basic Info" },
@@ -69,32 +69,21 @@ const Feedback = () => {
       const updatedPatient = {
         ...patient,
         analysisResult: result,
-        analysisDate: new Date().toISOString()
+        analysisDate: new Date().toISOString(),
+        beforeAceticImage: beforeAceticImage,
+        afterAceticImage: afterAceticImage
       };
       
       // Save updated patient data
       localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
       
-      // Save to results history
-      const resultsHistory = JSON.parse(localStorage.getItem('resultsHistory') || '[]');
+      // Use the helper function to save to results history
+      saveResultToHistory(updatedPatient);
       
-      // Check if this patient result already exists
-      const existingIndex = resultsHistory.findIndex((p: any) => 
-        p.id === updatedPatient.id || 
-        (p.firstName === updatedPatient.firstName && 
-         p.lastName === updatedPatient.lastName && 
-         p.phoneNumber === updatedPatient.phoneNumber)
-      );
-      
-      if (existingIndex >= 0) {
-        // Update existing record
-        resultsHistory[existingIndex] = updatedPatient;
-      } else {
-        // Add new record
-        resultsHistory.push(updatedPatient);
-      }
-      
-      localStorage.setItem('resultsHistory', JSON.stringify(resultsHistory));
+      // Dispatch storage event to notify other tabs/windows
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'resultsHistory'
+      }));
     }
     
     // Hide animation after delay

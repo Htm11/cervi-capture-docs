@@ -54,9 +54,6 @@ export const saveResultToHistory = (result: PatientResult): void => {
     : [...existingResults, resultWithId];
   
   localStorage.setItem('resultsHistory', JSON.stringify(updatedResults));
-  
-  // Also save as current patient
-  localStorage.setItem('currentPatient', JSON.stringify(resultWithId));
 };
 
 const Results = () => {
@@ -73,20 +70,33 @@ const Results = () => {
     }
     
     // Load all historical results from local storage
-    const resultsHistory = getResultsHistory();
-    console.log('Loaded results history:', resultsHistory);
+    const loadResults = () => {
+      const resultsHistory = getResultsHistory();
+      console.log('Loaded results history:', resultsHistory);
+      
+      // Sort by date (newest first)
+      resultsHistory.sort((a: PatientResult, b: PatientResult) => 
+        new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
+      );
+      
+      setResults(resultsHistory);
+    };
     
-    // Sort by date (newest first)
-    resultsHistory.sort((a: PatientResult, b: PatientResult) => 
-      new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-    );
+    // Load results initially
+    loadResults();
     
-    setResults(resultsHistory);
+    // Set up event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'resultsHistory') {
+        loadResults();
+      }
+    };
     
-    // For demonstration, let's add test results if none exist
-    if (resultsHistory.length === 0) {
-      console.log('No results found, you may want to add some test data for demonstration');
-    }
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [isAuthenticated, navigate]);
   
   // Filter results based on search term
@@ -100,7 +110,6 @@ const Results = () => {
     localStorage.setItem('currentPatient', JSON.stringify(result));
     
     // We need to set the images too if available
-    // This is a simplification - in a real app you would store image references in the database
     localStorage.setItem('beforeAceticImage', result.beforeAceticImage || '');
     localStorage.setItem('afterAceticImage', result.afterAceticImage || '');
     
