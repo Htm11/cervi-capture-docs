@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
+import { Session, User } from '@supabase/supabase-js';
 
 interface Doctor {
   id: string;
@@ -14,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  signUp: (email: string, password: string, name: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,55 +24,119 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [session, setSession] = useState<Session | null>(null);
   const { toast } = useToast();
 
-  // Check for saved user on initial load
+  // Initialize auth state
   useEffect(() => {
-    const savedDoctor = localStorage.getItem('cerviDoctor');
-    if (savedDoctor) {
-      try {
-        setCurrentDoctor(JSON.parse(savedDoctor));
-      } catch (error) {
-        console.error('Failed to parse saved doctor', error);
-        localStorage.removeItem('cerviDoctor');
+    const initAuth = async () => {
+      setIsLoading(true);
+      
+      // Get current session
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        setIsLoading(false);
+        return;
       }
-    }
-    setIsLoading(false);
+      
+      if (session) {
+        setSession(session);
+        
+        // Convert the session user to a doctor object
+        if (session.user) {
+          const { id, email } = session.user;
+          
+          // Try to get user metadata (name) from Supabase profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', id)
+            .single();
+          
+          const name = profileData?.name || email?.split('@')[0] || 'Doctor';
+          
+          setCurrentDoctor({
+            id,
+            name,
+            email: email || '',
+          });
+        }
+      }
+      
+      setIsLoading(false);
+    };
+    
+    initAuth();
+    
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          const { id, email } = session.user;
+          
+          // Try to get user metadata from Supabase profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', id)
+            .single();
+          
+          const name = profileData?.name || email?.split('@')[0] || 'Doctor';
+          
+          setCurrentDoctor({
+            id,
+            name,
+            email: email || '',
+          });
+        } else {
+          setCurrentDoctor(null);
+        }
+      }
+    );
+    
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Mock login function - modified to always succeed for testing
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay (reduced for testing)
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
     try {
-      // For testing, always succeed regardless of input
-      // Use provided email or a default
-      const userEmail = email || 'test@example.com';
-      
-      // Mocked doctor data - would come from your API
-      const mockDoctor: Doctor = {
-        id: '123456',
-        name: 'Dr. ' + userEmail.split('@')[0],
-        email: userEmail
-      };
-      
-      setCurrentDoctor(mockDoctor);
-      localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${mockDoctor.name}`,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
       
-      return true;
+      if (error) {
+        console.error('Login error:', error);
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (data.user) {
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${data.user.email?.split('@')[0] || 'Doctor'}`,
+        });
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: "An error occurred during login",
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
       return false;
@@ -78,13 +145,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    setCurrentDoctor(null);
-    localStorage.removeItem('cerviDoctor');
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully",
-    });
+  const signUp = async (email: string, password: string, name: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    try {
+      // Sign up the user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+      
+      if (error) {
+        console.error('Signup error:', error);
+        toast({
+          title: "Signup failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (data.user) {
+        // Create a profile entry for the new user
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: data.user.id,
+              name,
+              email,
+              created_at: new Date().toISOString(),
+            }
+          ]);
+        
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+        
+        toast({
+          title: "Signup successful",
+          description: "Your account has been created. You can now log in.",
+        });
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setCurrentDoctor(null);
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+    }
   };
 
   return (
@@ -94,7 +234,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!currentDoctor,
         isLoading,
         login,
-        logout
+        logout,
+        signUp
       }}
     >
       {children}
