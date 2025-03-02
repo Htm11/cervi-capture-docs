@@ -1,17 +1,33 @@
+
 import { supabase } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
 
 // Patient CRUD operations
 export const createPatient = async (patientData: Patient): Promise<{ data: Patient | null, error: any }> => {
   try {
+    console.log("Creating patient with data:", patientData);
+    
+    // Validate required fields
+    if (!patientData.firstName || !patientData.lastName || !patientData.phoneNumber || !patientData.doctor_id) {
+      console.error("Missing required fields for patient creation");
+      return { 
+        data: null, 
+        error: new Error("Missing required fields: firstName, lastName, phoneNumber and doctor_id are required") 
+      };
+    }
+    
     const { data, error } = await supabase
       .from('patients')
       .insert([patientData])
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error creating patient:", error);
+      throw error;
+    }
     
+    console.log("Patient created successfully:", data);
     return { data, error: null };
   } catch (error) {
     console.error('Error creating patient:', error);

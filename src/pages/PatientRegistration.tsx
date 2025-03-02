@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface PatientData {
+interface PatientFormData {
   firstName: string;
   lastName: string;
   countryCode: string;
@@ -91,7 +91,7 @@ const PatientRegistration = () => {
   const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [patientData, setPatientData] = useState<PatientData>({
+  const [patientFormData, setPatientFormData] = useState<PatientFormData>({
     firstName: '',
     lastName: '',
     countryCode: '+250',
@@ -130,7 +130,7 @@ const PatientRegistration = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    setPatientData(prev => ({ ...prev, [id]: value }));
+    setPatientFormData(prev => ({ ...prev, [id]: value }));
     
     if (errors[id]) {
       setErrors(prev => ({ ...prev, [id]: '' }));
@@ -138,7 +138,7 @@ const PatientRegistration = () => {
   };
 
   const handleDateChange = (date: Date | undefined) => {
-    setPatientData(prev => ({ ...prev, dateOfBirth: date }));
+    setPatientFormData(prev => ({ ...prev, dateOfBirth: date }));
     if (errors.dateOfBirth) {
       setErrors(prev => ({ ...prev, dateOfBirth: '' }));
     }
@@ -152,8 +152,8 @@ const PatientRegistration = () => {
   const handleYearSelect = (year: number) => {
     setSelectedYear(year);
     
-    if (patientData.dateOfBirth) {
-      const newDate = new Date(patientData.dateOfBirth);
+    if (patientFormData.dateOfBirth) {
+      const newDate = new Date(patientFormData.dateOfBirth);
       newDate.setFullYear(year);
       handleDateChange(newDate);
     } else {
@@ -165,11 +165,11 @@ const PatientRegistration = () => {
   };
   
   const handleSelectChange = (field: string, value: string) => {
-    setPatientData(prev => ({ ...prev, [field]: value }));
+    setPatientFormData(prev => ({ ...prev, [field]: value }));
   };
   
   const handleConditionChange = (condition: string, checked: boolean) => {
-    setPatientData(prev => {
+    setPatientFormData(prev => {
       let updatedConditions = [...prev.existingConditions];
       
       if (condition === "None" && checked) {
@@ -186,7 +186,7 @@ const PatientRegistration = () => {
   };
   
   const handleSymptomChange = (symptom: string, checked: boolean) => {
-    setPatientData(prev => {
+    setPatientFormData(prev => {
       let updatedSymptoms = [...prev.commonSymptoms];
       
       if (symptom === "None" && checked) {
@@ -209,16 +209,16 @@ const PatientRegistration = () => {
       const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
       
       requiredFields.forEach(field => {
-        if (!patientData[field as keyof PatientData]) {
+        if (!patientFormData[field as keyof PatientFormData]) {
           newErrors[field] = 'This field is required';
         }
       });
       
-      if (patientData.phoneNumber && !/^\d{7,12}$/.test(patientData.phoneNumber)) {
+      if (patientFormData.phoneNumber && !/^\d{7,12}$/.test(patientFormData.phoneNumber)) {
         newErrors.phoneNumber = 'Please enter a valid phone number (7-12 digits)';
       }
       
-      if (!patientData.dateOfBirth) {
+      if (!patientFormData.dateOfBirth) {
         newErrors.dateOfBirth = 'Date of birth is required';
       }
     } else if (step === 2) {
@@ -252,36 +252,41 @@ const PatientRegistration = () => {
         
         try {
           const patientToCreate: Patient = {
-            firstName: patientData.firstName,
-            lastName: patientData.lastName,
-            phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-            dateOfBirth: patientData.dateOfBirth ? patientData.dateOfBirth.toISOString() : undefined,
-            education: patientData.education,
-            occupation: patientData.occupation,
-            maritalStatus: patientData.maritalStatus,
-            smokingStatus: patientData.smokingStatus,
-            alcoholUse: patientData.alcoholUse,
-            physicalActivity: patientData.physicalActivity,
-            existingConditions: patientData.existingConditions,
-            commonSymptoms: patientData.commonSymptoms,
-            reproductiveHistory: patientData.reproductiveHistory,
-            lastVisaExamResults: patientData.lastVisaExamResults,
+            firstName: patientFormData.firstName,
+            lastName: patientFormData.lastName,
+            phoneNumber: `${patientFormData.countryCode}${patientFormData.phoneNumber}`,
+            dateOfBirth: patientFormData.dateOfBirth ? patientFormData.dateOfBirth.toISOString() : undefined,
+            education: patientFormData.education,
+            occupation: patientFormData.occupation,
+            maritalStatus: patientFormData.maritalStatus,
+            smokingStatus: patientFormData.smokingStatus,
+            alcoholUse: patientFormData.alcoholUse,
+            physicalActivity: patientFormData.physicalActivity,
+            existingConditions: patientFormData.existingConditions,
+            commonSymptoms: patientFormData.commonSymptoms,
+            reproductiveHistory: patientFormData.reproductiveHistory,
+            lastVisaExamResults: patientFormData.lastVisaExamResults,
             screeningStep: 'before-acetic',
             doctor_id: currentDoctor.id
           };
           
+          console.log("Creating patient with data:", patientToCreate);
+          
           const { data: newPatient, error } = await createPatient(patientToCreate);
           
           if (error || !newPatient) {
+            console.error("Error creating patient:", error);
             throw new Error(error?.message || 'Failed to create patient');
           }
           
+          console.log("Patient created successfully:", newPatient);
+          
           localStorage.setItem('currentPatient', JSON.stringify({
             ...newPatient,
-            sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-            medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
-            lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
-            symptoms: patientData.commonSymptoms.join(', ')
+            sociodemographicData: `Education: ${patientFormData.education}, Occupation: ${patientFormData.occupation}, Marital Status: ${patientFormData.maritalStatus}`,
+            medicalHistory: `Existing Conditions: ${patientFormData.existingConditions.join(', ')}`,
+            lifestyleFactors: `Smoking: ${patientFormData.smokingStatus}, Alcohol: ${patientFormData.alcoholUse}, Physical Activity: ${patientFormData.physicalActivity}`,
+            symptoms: patientFormData.commonSymptoms.join(', ')
           }));
           
           navigate('/camera');
@@ -331,7 +336,7 @@ const PatientRegistration = () => {
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Enter first name"
-                  value={patientData.firstName}
+                  value={patientFormData.firstName}
                   onChange={handleChange}
                 />
                 {errors.firstName && <p className="text-destructive text-xs">{errors.firstName}</p>}
@@ -344,7 +349,7 @@ const PatientRegistration = () => {
                   type="text"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   placeholder="Enter last name"
-                  value={patientData.lastName}
+                  value={patientFormData.lastName}
                   onChange={handleChange}
                 />
                 {errors.lastName && <p className="text-destructive text-xs">{errors.lastName}</p>}
@@ -361,7 +366,7 @@ const PatientRegistration = () => {
                     type="tel"
                     className="w-full px-3 py-2 border border-gray-300 rounded-r-md"
                     placeholder="e.g. 78123456"
-                    value={patientData.phoneNumber}
+                    value={patientFormData.phoneNumber}
                     onChange={handleChange}
                   />
                 </div>
@@ -382,13 +387,13 @@ const PatientRegistration = () => {
                       variant={"outline"}
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !patientData.dateOfBirth && "text-muted-foreground",
+                        !patientFormData.dateOfBirth && "text-muted-foreground",
                         errors.dateOfBirth && "border-destructive"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {patientData.dateOfBirth ? (
-                        format(patientData.dateOfBirth, "MMMM d, yyyy")
+                      {patientFormData.dateOfBirth ? (
+                        format(patientFormData.dateOfBirth, "MMMM d, yyyy")
                       ) : (
                         <span>Select date</span>
                       )}
@@ -427,10 +432,10 @@ const PatientRegistration = () => {
                     ) : (
                       <Calendar
                         mode="single"
-                        selected={patientData.dateOfBirth}
+                        selected={patientFormData.dateOfBirth}
                         onSelect={handleDateChange}
                         initialFocus
-                        defaultMonth={patientData.dateOfBirth || new Date(selectedYear || new Date().getFullYear(), 0)}
+                        defaultMonth={patientFormData.dateOfBirth || new Date(selectedYear || new Date().getFullYear(), 0)}
                         disabled={(date) => date > new Date()}
                       />
                     )}
@@ -446,7 +451,7 @@ const PatientRegistration = () => {
                 <div className="space-y-2">
                   <Label htmlFor="education">Education Level</Label>
                   <Select 
-                    value={patientData.education} 
+                    value={patientFormData.education} 
                     onValueChange={(value) => handleSelectChange('education', value)}
                   >
                     <SelectTrigger>
@@ -467,7 +472,7 @@ const PatientRegistration = () => {
                     type="text"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="Enter occupation"
-                    value={patientData.occupation}
+                    value={patientFormData.occupation}
                     onChange={handleChange}
                   />
                 </div>
@@ -475,7 +480,7 @@ const PatientRegistration = () => {
                 <div className="space-y-2">
                   <Label htmlFor="maritalStatus">Marital Status</Label>
                   <Select 
-                    value={patientData.maritalStatus} 
+                    value={patientFormData.maritalStatus} 
                     onValueChange={(value) => handleSelectChange('maritalStatus', value)}
                   >
                     <SelectTrigger>
@@ -505,7 +510,7 @@ const PatientRegistration = () => {
                   <div key={condition} className="flex items-center space-x-2">
                     <Checkbox 
                       id={`condition-${condition}`} 
-                      checked={patientData.existingConditions.includes(condition)}
+                      checked={patientFormData.existingConditions.includes(condition)}
                       onCheckedChange={(checked) => handleConditionChange(condition, checked as boolean)}
                     />
                     <Label 
@@ -527,7 +532,7 @@ const PatientRegistration = () => {
                   <div key={symptom} className="flex items-center space-x-2">
                     <Checkbox 
                       id={`symptom-${symptom}`} 
-                      checked={patientData.commonSymptoms.includes(symptom)}
+                      checked={patientFormData.commonSymptoms.includes(symptom)}
                       onCheckedChange={(checked) => handleSymptomChange(symptom, checked as boolean)}
                     />
                     <Label 
@@ -547,7 +552,7 @@ const PatientRegistration = () => {
                 <div className="space-y-3">
                   <Label className="text-sm">Smoking Status</Label>
                   <RadioGroup
-                    value={patientData.smokingStatus}
+                    value={patientFormData.smokingStatus}
                     onValueChange={(value) => handleSelectChange('smokingStatus', value)}
                     className="flex flex-col space-y-1"
                   >
@@ -569,7 +574,7 @@ const PatientRegistration = () => {
                 <div className="space-y-3">
                   <Label className="text-sm">Alcohol Use</Label>
                   <RadioGroup
-                    value={patientData.alcoholUse}
+                    value={patientFormData.alcoholUse}
                     onValueChange={(value) => handleSelectChange('alcoholUse', value)}
                     className="flex flex-col space-y-1"
                   >
@@ -591,7 +596,7 @@ const PatientRegistration = () => {
                 <div className="space-y-2">
                   <Label htmlFor="physicalActivity">Physical Activity</Label>
                   <Select 
-                    value={patientData.physicalActivity} 
+                    value={patientFormData.physicalActivity} 
                     onValueChange={(value) => handleSelectChange('physicalActivity', value)}
                   >
                     <SelectTrigger>
@@ -613,7 +618,7 @@ const PatientRegistration = () => {
                 label="Reproductive History"
                 multiline
                 placeholder="Enter details about pregnancies, births, contraceptive use, etc."
-                value={patientData.reproductiveHistory}
+                value={patientFormData.reproductiveHistory}
                 onChange={handleChange}
               />
             </div>
@@ -624,7 +629,7 @@ const PatientRegistration = () => {
                 label="Last Visa Exam Results"
                 multiline
                 placeholder="Enter results from the last visa exam"
-                value={patientData.lastVisaExamResults}
+                value={patientFormData.lastVisaExamResults}
                 onChange={handleChange}
               />
             </div>
