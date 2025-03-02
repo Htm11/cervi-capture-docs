@@ -3,21 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
 import { getPatient, createPatient } from './patientService';
-import { isValidUUID } from '@/utils/ImageUtils';
-import { 
-  uploadScreeningImage, 
-  saveScreeningResult, 
-  verifyPatientExists,
-  getPatientIdByDetails 
-} from './ResultsService';
-
-// Re-export functions from ResultsService for backward compatibility
-export { 
-  uploadScreeningImage, 
-  saveScreeningResult, 
-  verifyPatientExists,
-  getPatientIdByDetails 
-};
 
 export interface ScreeningResult {
   id?: string;
@@ -34,79 +19,80 @@ export interface ScreeningResult {
   patients?: any; // Add this to handle the joined data
 }
 
-/**
- * Check if patient exists and create if needed
- * Now with better error handling and data validation
- */
+// Upload an image to Supabase Storage
+export const uploadScreeningImage = async (
+  imageBase64: string,
+  doctorId: string,
+  patientId: string,
+  imageType: 'before' | 'after'
+): Promise<string | null> => {
+  try {
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      return null;
+    }
+
+    // Convert base64 to blob
+    const base64Data = imageBase64.split(',')[1];
+    const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
+    
+    // Create a file from the blob
+    const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
+    const file = new File([blob], fileName, { type: 'image/jpeg' });
+    
+    // Upload to Supabase storage
+    const { data, error } = await supabase
+      .storage
+      .from('cervical_images')
+      .upload(fileName, file);
+
+    if (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+
+    // Get the public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('cervical_images')
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error in uploadScreeningImage:', error);
+    return null;
+  }
+};
+
+// Check if patient exists and create if needed
 export const ensurePatientExists = async (
   patientData: any,
   doctorId: string
 ): Promise<string> => {
   try {
-    console.log("Ensuring patient exists with data:", JSON.stringify(patientData, null, 2));
-    console.log("Doctor ID:", doctorId);
-    
-    // Validate patientData
-    if (!patientData) {
-      throw new Error('No patient data provided');
-    }
-    
-    if (!doctorId) {
-      throw new Error('No doctor ID provided');
-    }
-    
-    // Check if valid patient ID is provided and exists in database
-    if (patientData.id && patientData.id !== 'temp-patient-id' && isValidUUID(patientData.id)) {
-      console.log("Checking for existing patient with ID:", patientData.id);
-      
-      const patientExists = await verifyPatientExists(patientData.id);
-      
-      if (patientExists) {
-        console.log("Found existing patient with ID:", patientData.id);
+    // First check if this is a real patient ID already in the database
+    if (patientData.id && patientData.id !== 'temp-patient-id') {
+      const existingPatient = await getPatient(patientData.id);
+      if (existingPatient) {
         return patientData.id;
-      } else {
-        console.log("Patient ID not found in database:", patientData.id);
-      }
-    } else {
-      console.log("No valid patient ID provided, trying to find by details...");
-      
-      // Try to find patient by name and DOB if ID is not valid
-      const firstName = patientData.firstName || patientData.first_name || '';
-      const lastName = patientData.lastName || patientData.last_name || '';
-      const dateOfBirth = patientData.dateOfBirth instanceof Date 
-        ? patientData.dateOfBirth.toISOString().split('T')[0] 
-        : (typeof patientData.dateOfBirth === 'string' 
-            ? patientData.dateOfBirth 
-            : (patientData.date_of_birth || ''));
-      
-      if (firstName && lastName && dateOfBirth) {
-        const existingPatientId = await getPatientIdByDetails(firstName, lastName, dateOfBirth, doctorId);
-        
-        if (existingPatientId) {
-          console.log("Found patient by details, using ID:", existingPatientId);
-          return existingPatientId;
-        }
       }
     }
     
-    // Create new patient with standardized data
+    // If we reach here, we need to create a real patient
     const newPatient = {
       doctor_id: doctorId,
-      first_name: patientData.firstName || patientData.first_name || 'Unknown',
-      last_name: patientData.lastName || patientData.last_name || 'Patient',
+      first_name: patientData.firstName || 'Unknown',
+      last_name: patientData.lastName || 'Patient',
       date_of_birth: patientData.dateOfBirth instanceof Date 
         ? patientData.dateOfBirth.toISOString().split('T')[0] 
         : (typeof patientData.dateOfBirth === 'string' 
             ? patientData.dateOfBirth 
-            : (patientData.date_of_birth || new Date().toISOString().split('T')[0])),
-      contact_number: patientData.phoneNumber || patientData.contact_number || null,
+            : new Date().toISOString().split('T')[0]),
+      contact_number: patientData.phoneNumber || null,
       email: patientData.email || null,
-      medical_history: typeof patientData.medicalHistory === 'object' 
-        ? JSON.stringify(patientData.medicalHistory) 
-        : (patientData.medicalHistory || patientData.medical_history || null)
+      medical_history: patientData.medicalHistory || null
     };
     
-    console.log("Creating new patient with data:", newPatient);
     const createdPatient = await createPatient(newPatient);
     if (createdPatient && createdPatient.id) {
       console.log('Created new patient with ID:', createdPatient.id);
@@ -120,6 +106,45 @@ export const ensurePatientExists = async (
   }
 };
 
+// Save screening result to the database
+export const saveScreeningResult = async (
+  result: ScreeningResult,
+  doctor: Doctor
+): Promise<ScreeningResult | null> => {
+  try {
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      return null;
+    }
+
+    // Ensure doctor_id is set to the current doctor
+    const resultWithDoctor = {
+      ...result,
+      doctor_id: doctor.id
+    };
+
+    const { data, error } = await supabase
+      .from('screening_results')
+      .insert(resultWithDoctor)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving screening result:', error);
+      throw error;
+    }
+
+    // Ensure the result is cast to the correct type
+    return {
+      ...data,
+      result: data.result as 'positive' | 'negative'
+    } as ScreeningResult;
+  } catch (error) {
+    console.error('Error in saveScreeningResult:', error);
+    return null;
+  }
+};
+
 // Get screening results for a specific patient
 export const getPatientScreeningResults = async (
   patientId: string
@@ -127,11 +152,6 @@ export const getPatientScreeningResults = async (
   try {
     if (!supabase) {
       console.error('Supabase client is not initialized');
-      return [];
-    }
-
-    if (!patientId || !isValidUUID(patientId)) {
-      console.error('Invalid patient ID provided:', patientId);
       return [];
     }
 
@@ -146,6 +166,7 @@ export const getPatientScreeningResults = async (
       throw error;
     }
 
+    // Cast all results to the correct type
     return (data || []).map(item => ({
       ...item,
       result: item.result as 'positive' | 'negative'
@@ -166,11 +187,6 @@ export const getDoctorScreeningResults = async (
       return [];
     }
 
-    if (!doctorId) {
-      console.error('No doctor ID provided');
-      return [];
-    }
-
     const { data, error } = await supabase
       .from('screening_results')
       .select('*, patients!inner(*)')
@@ -182,6 +198,7 @@ export const getDoctorScreeningResults = async (
       throw error;
     }
 
+    // Cast all results to the correct type
     return (data || []).map(item => ({
       ...item,
       result: item.result as 'positive' | 'negative'
@@ -197,11 +214,6 @@ export const deleteScreeningResult = async (resultId: string): Promise<boolean> 
   try {
     if (!supabase) {
       console.error('Supabase client is not initialized');
-      return false;
-    }
-
-    if (!resultId) {
-      console.error('No result ID provided');
       return false;
     }
 

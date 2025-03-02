@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -250,7 +249,6 @@ const PatientRegistration = () => {
     try {
       setIsSubmitting(true);
       
-      // Create a comprehensive patient record with all the collected information
       const newPatient = {
         doctor_id: currentDoctor.id,
         first_name: patientData.firstName,
@@ -258,52 +256,14 @@ const PatientRegistration = () => {
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
         contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
         email: '',
-        medical_history: JSON.stringify({
-          conditions: patientData.existingConditions,
-          symptoms: patientData.commonSymptoms,
-          smoking: patientData.smokingStatus,
-          alcohol: patientData.alcoholUse,
-          physicalActivity: patientData.physicalActivity,
-          education: patientData.education,
-          occupation: patientData.occupation,
-          maritalStatus: patientData.maritalStatus,
-          reproductiveHistory: patientData.reproductiveHistory,
-          lastVisaExamResults: patientData.lastVisaExamResults
-        })
+        medical_history: ''
       };
       
       const createdPatient = await createPatient(newPatient);
       
       if (createdPatient && createdPatient.id) {
-        console.log("Patient created successfully with ID:", createdPatient.id);
         setPatientCreated(true);
         setCreatedPatientId(createdPatient.id);
-        
-        // Store the full patient object with the ID in localStorage
-        const storageData = {
-          id: createdPatient.id,
-          firstName: patientData.firstName,
-          lastName: patientData.lastName,
-          dateOfBirth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
-          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-          screeningStep: 'before-acetic',
-          
-          // Include additional fields that might be needed later
-          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-          medicalHistory: {
-            conditions: patientData.existingConditions,
-            symptoms: patientData.commonSymptoms,
-            smoking: patientData.smokingStatus,
-            alcohol: patientData.alcoholUse,
-            physicalActivity: patientData.physicalActivity,
-          },
-          reproductiveHistory: patientData.reproductiveHistory,
-          lastVisaExamResults: patientData.lastVisaExamResults
-        };
-        
-        localStorage.setItem('currentPatient', JSON.stringify(storageData));
-        console.log("Patient data saved to localStorage:", storageData);
-        
         return createdPatient.id;
       } else {
         throw new Error('Failed to create patient');
@@ -324,15 +284,26 @@ const PatientRegistration = () => {
   const handleNext = async () => {
     if (validateStep(currentStep)) {
       if (currentStep === 1) {
-        // Just move to step 2 without creating the patient yet
-        setCurrentStep(2);
-      } else if (currentStep === 2) {
-        // Create the patient after collecting all medical information
         const patientId = await handleCreatePatient();
         if (!patientId) {
           return; // Don't proceed if patient creation failed
         }
         
+        setCurrentStep(2);
+      } else if (currentStep === 2) {
+        const storageData = {
+          ...patientData,
+          id: createdPatientId,
+          screeningStep: 'before-acetic',
+          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
+          
+          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
+          medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
+          lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
+          symptoms: patientData.commonSymptoms.join(', ')
+        };
+        
+        localStorage.setItem('currentPatient', JSON.stringify(storageData));
         navigate('/camera');
       } else {
         setCurrentStep(prev => prev + 1);

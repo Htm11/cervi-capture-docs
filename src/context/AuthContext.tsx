@@ -15,15 +15,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        console.log("Checking for existing session...");
         const userData = await checkSession();
         
         if (userData) {
-          console.log("Session found for user:", userData.email);
           setCurrentDoctor(userData);
           localStorage.setItem('cerviDoctor', JSON.stringify(userData));
-        } else {
-          console.log("No active session found");
         }
       } catch (error) {
         console.error('Session initialization error:', error);
@@ -48,11 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsLoading(true);
     try {
-      console.log("Attempting login for:", email);
       const { success, doctor, error } = await loginUser(email, password);
       
       if (!success || !doctor) {
-        console.error("Login failed:", error);
         toast({
           title: "Login failed",
           description: error || "Authentication failed",
@@ -61,7 +55,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      console.log("Login successful for:", doctor.email, "with ID:", doctor.id);
       setCurrentDoctor(doctor);
       localStorage.setItem('cerviDoctor', JSON.stringify(doctor));
       
