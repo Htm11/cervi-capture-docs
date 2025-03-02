@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -27,26 +26,23 @@ const steps: Step[] = [
 ];
 
 const Camera = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // State
   const [photoTaken, setPhotoTaken] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [patientData, setPatientData] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState(3); // Default to "Before Acetic"
+  const [currentStep, setCurrentStep] = useState(3);
   const [showAceticAcidDialog, setShowAceticAcidDialog] = useState(false);
   
-  // Check authentication and get patient data
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !currentDoctor) {
       navigate('/login');
       return;
     }
     
-    // Check if we have patient data
     const storedPatientData = localStorage.getItem('currentPatient');
     if (!storedPatientData) {
       toast({
@@ -61,13 +57,12 @@ const Camera = () => {
     const parsedData = JSON.parse(storedPatientData);
     setPatientData(parsedData);
     
-    // Set current step based on screening step
     if (parsedData.screeningStep === 'after-acetic') {
       setCurrentStep(4);
     } else {
       setCurrentStep(3);
     }
-  }, [isAuthenticated, navigate, toast]);
+  }, [isAuthenticated, currentDoctor, navigate, toast]);
   
   const handlePhotoTaken = (imageDataUrl: string) => {
     setCapturedImage(imageDataUrl);
@@ -79,19 +74,25 @@ const Camera = () => {
     setCapturedImage(null);
   };
   
-  const analyzeImage = () => {
-    if (!capturedImage || !patientData) return;
+  const analyzeImage = async () => {
+    if (!capturedImage || !patientData || !currentDoctor) return;
     
     setIsAnalyzing(true);
     
-    // Simulate image analysis
-    setTimeout(() => {
-      // Save the image based on current step
+    try {
+      const imageFileName = currentStep === 3 
+        ? `${currentDoctor.id}/${patientData.id}/before-acetic-${new Date().getTime()}.jpg`
+        : `${currentDoctor.id}/${patientData.id}/after-acetic-${new Date().getTime()}.jpg`;
+      
+      const { url: imageUrl, error: uploadError } = await uploadImage(capturedImage, imageFileName);
+      
+      if (uploadError || !imageUrl) {
+        throw new Error("Failed to upload image");
+      }
+      
       if (currentStep === 3) {
-        // Before acetic acid
-        localStorage.setItem('beforeAceticImage', capturedImage || '');
+        localStorage.setItem('beforeAceticImage', imageUrl);
         
-        // Update patient data with new step
         const updatedPatientData = {
           ...patientData,
           screeningStep: 'after-acetic'
@@ -101,16 +102,24 @@ const Camera = () => {
         setIsAnalyzing(false);
         setShowAceticAcidDialog(true);
       } else {
-        // After acetic acid
-        localStorage.setItem('afterAceticImage', capturedImage || '');
+        localStorage.setItem('afterAceticImage', imageUrl);
         
-        // For demo, also set capturedImage to ensure compatibility with feedback page
-        localStorage.setItem('capturedImage', capturedImage || '');
+        await updatePatient(patientData.id, { screeningStep: 'completed' });
+        
+        localStorage.setItem('capturedImage', imageUrl);
         
         setIsAnalyzing(false);
         navigate('/feedback');
       }
-    }, 2000);
+    } catch (error) {
+      console.error('Error processing image:', error);
+      toast({
+        title: "Image processing failed",
+        description: error.message || "There was an error processing the image",
+        variant: "destructive",
+      });
+      setIsAnalyzing(false);
+    }
   };
   
   const handleAceticAcidConfirm = () => {

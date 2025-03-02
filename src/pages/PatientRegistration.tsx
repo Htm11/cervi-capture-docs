@@ -84,7 +84,7 @@ const physicalActivityOptions = [
 ];
 
 const PatientRegistration = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -233,22 +233,66 @@ const PatientRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validateStep(currentStep)) {
       if (currentStep === 2) {
-        const storageData = {
-          ...patientData,
-          screeningStep: 'before-acetic',
-          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-          
-          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-          medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
-          lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
-          symptoms: patientData.commonSymptoms.join(', ')
-        };
+        if (!currentDoctor) {
+          toast({
+            title: "Authentication error",
+            description: "Please log in again to continue",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        }
         
-        localStorage.setItem('currentPatient', JSON.stringify(storageData));
-        navigate('/camera');
+        setIsSubmitting(true);
+        
+        try {
+          const patientData: Patient = {
+            firstName: patientData.firstName,
+            lastName: patientData.lastName,
+            phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
+            dateOfBirth: patientData.dateOfBirth ? patientData.dateOfBirth.toISOString() : undefined,
+            education: patientData.education,
+            occupation: patientData.occupation,
+            maritalStatus: patientData.maritalStatus,
+            smokingStatus: patientData.smokingStatus,
+            alcoholUse: patientData.alcoholUse,
+            physicalActivity: patientData.physicalActivity,
+            existingConditions: patientData.existingConditions,
+            commonSymptoms: patientData.commonSymptoms,
+            reproductiveHistory: patientData.reproductiveHistory,
+            lastVisaExamResults: patientData.lastVisaExamResults,
+            screeningStep: 'before-acetic',
+            doctor_id: currentDoctor.id
+          };
+          
+          const { data: newPatient, error } = await createPatient(patientData);
+          
+          if (error || !newPatient) {
+            throw new Error(error?.message || 'Failed to create patient');
+          }
+          
+          localStorage.setItem('currentPatient', JSON.stringify({
+            ...newPatient,
+            sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
+            medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
+            lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
+            symptoms: patientData.commonSymptoms.join(', ')
+          }));
+          
+          navigate('/camera');
+        } catch (error) {
+          console.error('Error saving patient:', error);
+          toast({
+            title: "Failed to save patient",
+            description: error.message || "There was an error saving the patient data",
+            variant: "destructive",
+          });
+        } finally {
+          setIsSubmitting(false);
+        }
       } else {
         setCurrentStep(prev => prev + 1);
       }

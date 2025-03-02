@@ -8,137 +8,98 @@ import { CheckCircle, XCircle, Search, Calendar, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
+import { getResultsByDoctor, migrateLocalStorageToSupabase } from '@/services/patientService';
+import { ScreeningResult } from '@/types/patient';
 
-interface PatientResult {
-  id?: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  dateOfBirth?: string;
-  analysisResult: 'positive' | 'negative';
-  analysisDate: string;
-  beforeAceticImage?: string;
-  afterAceticImage?: string;
+interface PatientResult extends ScreeningResult {
+  patients?: {
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    dateOfBirth?: string;
+  };
 }
 
-// Helper functions to manage results history in localStorage
-export const getResultsHistory = (): PatientResult[] => {
-  const storedResults = localStorage.getItem('resultsHistory');
-  if (!storedResults) return [];
-  
-  try {
-    const parsedResults = JSON.parse(storedResults);
-    return Array.isArray(parsedResults) ? parsedResults : [];
-  } catch (error) {
-    console.error("Error parsing results history:", error);
-    return [];
-  }
-};
-
-export const saveResultToHistory = (result: PatientResult): void => {
-  // Get existing results
-  const existingResults = getResultsHistory();
-  
-  // Generate a unique ID if not present
-  const resultWithId = {
-    ...result,
-    id: result.id || `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  };
-  
-  // Check if this result already exists (by ID)
-  const resultExists = existingResults.some(r => r.id === resultWithId.id);
-  
-  // Save the updated results
-  const updatedResults = resultExists
-    ? existingResults.map(r => r.id === resultWithId.id ? resultWithId : r)
-    : [...existingResults, resultWithId];
-  
-  localStorage.setItem('resultsHistory', JSON.stringify(updatedResults));
-};
-
 const Results = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<PatientResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !currentDoctor) {
       navigate('/login');
       return;
     }
     
-    // Load all historical results from local storage
-    const loadResults = () => {
-      const resultsHistory = getResultsHistory();
-      console.log('Loaded results history:', resultsHistory);
+    const loadResults = async () => {
+      setIsLoading(true);
       
-      // Sort by date (newest first)
-      resultsHistory.sort((a: PatientResult, b: PatientResult) => 
-        new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-      );
-      
-      setResults(resultsHistory);
-    };
-    
-    // Load results initially
-    loadResults();
-    
-    // Set up event listener for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'resultsHistory') {
-        loadResults();
+      try {
+        // Try to migrate any localStorage data first
+        await migrateLocalStorageToSupabase(currentDoctor.id);
+        
+        // Then load results from Supabase
+        const { data, error } = await getResultsByDoctor(currentDoctor.id);
+        
+        if (error) {
+          console.error('Error loading results:', error);
+          toast({
+            title: "Failed to load results",
+            description: "There was an error loading your results",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (data) {
+          setResults(data as PatientResult[]);
+        }
+      } catch (error) {
+        console.error('Error in loadResults:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [isAuthenticated, navigate]);
+    loadResults();
+  }, [isAuthenticated, currentDoctor, navigate, toast]);
   
   // Filter results based on search term
-  const filteredResults = results.filter(result => 
-    `${result.firstName} ${result.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    result.phoneNumber.includes(searchTerm)
-  );
+  const filteredResults = results.filter(result => {
+    if (!result.patients) return false;
+    
+    return `${result.patients.firstName} ${result.patients.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      result.patients.phoneNumber.includes(searchTerm);
+  });
   
   const handleResultClick = (result: PatientResult) => {
-    // Set as current patient and navigate to feedback
-    localStorage.setItem('currentPatient', JSON.stringify(result));
+    if (!result.patients) return;
     
-    // We need to set the images too if available
-    localStorage.setItem('beforeAceticImage', result.beforeAceticImage || '');
-    localStorage.setItem('afterAceticImage', result.afterAceticImage || '');
+    // Store selected patient/result details for the feedback page
+    localStorage.setItem('currentPatient', JSON.stringify({
+      id: result.patient_id,
+      firstName: result.patients.firstName,
+      lastName: result.patients.lastName,
+      phoneNumber: result.patients.phoneNumber,
+      dateOfBirth: result.patients.dateOfBirth,
+      analysisResult: result.analysisResult,
+      analysisDate: result.analysisDate,
+      screeningStep: 'completed'
+    }));
+    
+    // Store image URLs
+    if (result.beforeAceticImage) {
+      localStorage.setItem('beforeAceticImage', result.beforeAceticImage);
+    }
+    
+    if (result.afterAceticImage) {
+      localStorage.setItem('afterAceticImage', result.afterAceticImage);
+    }
     
     navigate('/feedback');
-  };
-  
-  // For testing: Add a sample result
-  const addSampleResult = () => {
-    const sampleResult: PatientResult = {
-      id: `test_${Date.now()}`,
-      firstName: "Test",
-      lastName: `Patient ${Math.floor(Math.random() * 100)}`,
-      phoneNumber: `+1${Math.floor(Math.random() * 10000000000).toString().padStart(10, '0')}`,
-      dateOfBirth: "1990-01-01",
-      analysisResult: Math.random() > 0.5 ? 'positive' : 'negative',
-      analysisDate: new Date().toISOString(),
-    };
-    
-    saveResultToHistory(sampleResult);
-    
-    // Reload results
-    setResults(getResultsHistory().sort((a, b) => 
-      new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-    ));
-    
-    toast({
-      title: "Added sample result",
-      description: "A sample patient result was added for testing",
-    });
   };
   
   return (
@@ -149,9 +110,9 @@ const Results = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={addSampleResult}
+            onClick={() => navigate('/patient-registration')}
           >
-            Add Sample (Test)
+            New Patient
           </Button>
         </div>
         
@@ -166,7 +127,11 @@ const Results = () => {
           />
         </div>
         
-        {filteredResults.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cervi-600"></div>
+          </div>
+        ) : filteredResults.length === 0 ? (
           <div className="bg-white rounded-lg p-6 text-center shadow-sm">
             <p className="text-muted-foreground">No patient results found</p>
             <Button 
@@ -186,10 +151,12 @@ const Results = () => {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="font-medium">{result.firstName} {result.lastName}</h3>
+                    <h3 className="font-medium">
+                      {result.patients?.firstName} {result.patients?.lastName}
+                    </h3>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
                       <Phone className="h-3 w-3 mr-1" />
-                      <span>{result.phoneNumber}</span>
+                      <span>{result.patients?.phoneNumber}</span>
                     </div>
                   </div>
                   
