@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -104,8 +103,17 @@ const Camera = () => {
         // After acetic acid
         localStorage.setItem('afterAceticImage', capturedImage || '');
         
-        // For demo, also set capturedImage to ensure compatibility with feedback page
+        // Also set capturedImage to ensure compatibility with feedback page
         localStorage.setItem('capturedImage', capturedImage || '');
+        
+        // Make sure we keep the patient data in localStorage
+        // This is the fix - ensure patient data is preserved
+        if (patientData) {
+          localStorage.setItem('currentPatient', JSON.stringify({
+            ...patientData,
+            screeningStep: 'complete'
+          }));
+        }
         
         setIsAnalyzing(false);
         navigate('/feedback');

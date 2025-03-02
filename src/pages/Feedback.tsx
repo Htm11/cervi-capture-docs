@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -38,7 +39,9 @@ const Feedback = () => {
     
     const beforeAceticImage = localStorage.getItem('beforeAceticImage');
     const afterAceticImage = localStorage.getItem('afterAceticImage');
+    const patientDataString = localStorage.getItem('currentPatient');
     
+    // Check for required data
     if (!beforeAceticImage || !afterAceticImage) {
       toast({
         title: "Missing images",
@@ -49,19 +52,29 @@ const Feedback = () => {
       return;
     }
     
+    if (!patientDataString) {
+      toast({
+        title: "No patient data",
+        description: "Patient information is missing. Please start over.",
+        variant: "destructive",
+      });
+      navigate('/patient-registration');
+      return;
+    }
+    
+    // Set data in state
     setBeforeImage(beforeAceticImage);
     setAfterImage(afterAceticImage);
     
-    const patientDataString = localStorage.getItem('currentPatient');
-    if (patientDataString) {
-      setPatientData(JSON.parse(patientDataString));
-    }
-    
-    const result = Math.random() > 0.5 ? 'positive' : 'negative';
-    setAnalysisResult(result);
-    
-    if (patientDataString) {
+    try {
       const patient = JSON.parse(patientDataString);
+      setPatientData(patient);
+      
+      // Generate random result for demo
+      const result = Math.random() > 0.5 ? 'positive' : 'negative';
+      setAnalysisResult(result);
+      
+      // Update patient data with result
       const updatedPatient = {
         ...patient,
         analysisResult: result,
@@ -70,13 +83,22 @@ const Feedback = () => {
         afterAceticImage: afterAceticImage
       };
       
+      // Save back to localStorage to preserve all data
       localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
       
+      // Save to history
       saveResultToHistory(updatedPatient);
       
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'resultsHistory'
       }));
+    } catch (error) {
+      console.error('Error processing patient data:', error);
+      toast({
+        title: "Data error",
+        description: "There was an error processing the patient data",
+        variant: "destructive",
+      });
     }
     
     const timer = setTimeout(() => {
@@ -134,9 +156,11 @@ const Feedback = () => {
           description: "The screening result has been saved to the database",
         });
         
+        // Update patient ID in localStorage
         const updatedPatientData = {
           ...patientData,
-          id: validPatientId
+          id: validPatientId,
+          savedToDatabase: true
         };
         localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
       } else {
