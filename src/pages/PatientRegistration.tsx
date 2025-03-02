@@ -287,6 +287,32 @@ const PatientRegistration = () => {
           </div>
         );
       
+      case 3:
+        return (
+          <div className="text-center space-y-4">
+            <h3 className="text-lg font-medium">Before Acetic Acid</h3>
+            <p className="text-gray-600">
+              At this stage, you will take a photo of the cervix before applying acetic acid.
+            </p>
+            <p className="text-gray-600">
+              Click "Next" to proceed to the camera page.
+            </p>
+          </div>
+        );
+        
+      case 4:
+        return (
+          <div className="text-center space-y-4">
+            <h3 className="text-lg font-medium">After Acetic Acid</h3>
+            <p className="text-gray-600">
+              After applying acetic acid, you will take another photo of the cervix to analyze the changes.
+            </p>
+            <p className="text-gray-600">
+              Click "Register Patient" to complete registration and proceed to the camera page.
+            </p>
+          </div>
+        );
+      
       default:
         return null;
     }
@@ -300,7 +326,9 @@ const PatientRegistration = () => {
           
           <div className="mt-6 bg-white rounded-lg p-4 shadow-sm">
             <h1 className="text-xl font-semibold mb-4">
-              {step === 1 ? "Patient Information" : "Medical History"}
+              {step === 1 ? "Patient Information" : 
+               step === 2 ? "Medical History" :
+               step === 3 ? "Before Acetic Acid" : "After Acetic Acid"}
             </h1>
             
             <form onSubmit={handleSubmit}>
@@ -332,7 +360,7 @@ const PatientRegistration = () => {
               </Button>
             )}
             
-            {step < 2 ? (
+            {step < 4 ? (
               <Button
                 type="button"
                 onClick={handleNext}
