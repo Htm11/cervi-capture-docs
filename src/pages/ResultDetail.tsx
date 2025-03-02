@@ -16,6 +16,26 @@ import {
   Notes 
 } from '@/components/result-detail';
 
+// Define the type for the medical history explicitly
+interface MedicalHistoryObject {
+  sociodemographic?: {
+    education?: string;
+    occupation?: string;
+    maritalStatus?: string;
+  };
+  lifestyle?: {
+    smoking?: string;
+    alcohol?: string;
+    physicalActivity?: string;
+  };
+  medical?: {
+    conditions?: string[] | string;
+    symptoms?: string[] | string;
+    reproductiveHistory?: string;
+    lastVisaExamResults?: string;
+  };
+}
+
 const ResultDetail = () => {
   const { resultId } = useParams();
   const navigate = useNavigate();
@@ -57,16 +77,16 @@ const ResultDetail = () => {
             
             if (typeof data.patients.medical_history === 'string') {
               try {
-                const parsed = JSON.parse(data.patients.medical_history);
+                const parsed = JSON.parse(data.patients.medical_history) as MedicalHistoryObject;
                 console.log('Medical history parsed:', parsed);
                 
-                if (parsed.medical && parsed.medical.conditions) {
+                if (parsed && parsed.medical && parsed.medical.conditions) {
                   console.log('Medical conditions:', parsed.medical.conditions);
                   console.log('Is conditions an array:', Array.isArray(parsed.medical.conditions));
                   console.log('Conditions length:', Array.isArray(parsed.medical.conditions) ? parsed.medical.conditions.length : 'Not an array');
                 }
                 
-                if (parsed.medical && parsed.medical.symptoms) {
+                if (parsed && parsed.medical && parsed.medical.symptoms) {
                   console.log('Symptoms:', parsed.medical.symptoms);
                   console.log('Is symptoms an array:', Array.isArray(parsed.medical.symptoms));
                   console.log('Symptoms length:', Array.isArray(parsed.medical.symptoms) ? parsed.medical.symptoms.length : 'Not an array');
@@ -75,10 +95,10 @@ const ResultDetail = () => {
                 console.error('Error parsing medical history:', e);
               }
             } else {
-              const medicalHistory = data.patients.medical_history;
+              const medicalHistory = data.patients.medical_history as MedicalHistoryObject;
               console.log('Medical history (object):', medicalHistory);
               
-              if (medicalHistory.medical && 
+              if (medicalHistory && medicalHistory.medical && 
                   medicalHistory.medical.conditions) {
                 console.log('Medical conditions:', 
                   medicalHistory.medical.conditions);
@@ -86,7 +106,7 @@ const ResultDetail = () => {
                 console.log('Conditions length:', Array.isArray(medicalHistory.medical.conditions) ? medicalHistory.medical.conditions.length : 'Not an array');
               }
               
-              if (medicalHistory.medical && 
+              if (medicalHistory && medicalHistory.medical && 
                   medicalHistory.medical.symptoms) {
                 console.log('Symptoms:', 
                   medicalHistory.medical.symptoms);

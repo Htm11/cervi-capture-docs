@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-interface MedicalHistoryData {
+export interface MedicalHistoryData {
   sociodemographic?: {
     education?: string;
     occupation?: string;
@@ -75,13 +75,13 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
             <h3 className="text-sm font-semibold">Sociodemographic Data</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Education</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.education || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.sociodemographic?.education || 'Not available'}</div>
               
               <div className="text-muted-foreground">Occupation</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.occupation || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.sociodemographic?.occupation || 'Not available'}</div>
               
               <div className="text-muted-foreground">Marital Status</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.maritalStatus || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.sociodemographic?.maritalStatus || 'Not available'}</div>
             </div>
           </div>
           
@@ -89,13 +89,13 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
             <h3 className="text-sm font-semibold">Lifestyle Factors</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Smoking</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.smoking || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.lifestyle?.smoking || 'Not available'}</div>
               
               <div className="text-muted-foreground">Alcohol</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.alcohol || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.lifestyle?.alcohol || 'Not available'}</div>
               
               <div className="text-muted-foreground">Physical Activity</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.physicalActivity || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory?.lifestyle?.physicalActivity || 'Not available'}</div>
             </div>
           </div>
           
@@ -105,7 +105,7 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Medical Conditions</div>
               <div className="font-medium">
-                {medicalHistory.medical && medicalHistory.medical.conditions ? (
+                {medicalHistory?.medical && medicalHistory.medical.conditions ? (
                   Array.isArray(medicalHistory.medical.conditions) ? (
                     medicalHistory.medical.conditions.length > 0 ? (
                       medicalHistory.medical.conditions.includes("None") ? (
@@ -127,7 +127,7 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
               
               <div className="text-muted-foreground">Symptoms</div>
               <div className="font-medium">
-                {medicalHistory.medical && medicalHistory.medical.symptoms ? (
+                {medicalHistory?.medical && medicalHistory.medical.symptoms ? (
                   Array.isArray(medicalHistory.medical.symptoms) ? (
                     medicalHistory.medical.symptoms.length > 0 ? (
                       medicalHistory.medical.symptoms.includes("None") ? (
@@ -147,14 +147,14 @@ const MedicalHistory = ({ result }: MedicalHistoryProps) => {
                 ) : "None"}
               </div>
               
-              {medicalHistory.medical && medicalHistory.medical.reproductiveHistory && (
+              {medicalHistory?.medical && medicalHistory.medical.reproductiveHistory && (
                 <>
                   <div className="text-muted-foreground">Reproductive History</div>
                   <div className="font-medium">{medicalHistory.medical.reproductiveHistory}</div>
                 </>
               )}
               
-              {medicalHistory.medical && medicalHistory.medical.lastVisaExamResults && (
+              {medicalHistory?.medical && medicalHistory.medical.lastVisaExamResults && (
                 <>
                   <div className="text-muted-foreground">Last Visa Exam Results</div>
                   <div className="font-medium">{medicalHistory.medical.lastVisaExamResults}</div>
