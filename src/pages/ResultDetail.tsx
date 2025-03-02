@@ -124,6 +124,7 @@ const ResultDetail = () => {
         if (value === null || value === undefined) {
           return "None";
         } else if (Array.isArray(value)) {
+          // Improved array handling - this will properly show conditions arrays
           return value.length > 0 ? value.join(', ') : "None";
         } else if (typeof value === 'object') {
           return (
@@ -179,8 +180,34 @@ const ResultDetail = () => {
                         return null;
                       }
                       
+                      // Special handling for medical.conditions array
+                      if (key === 'conditions' && Array.isArray(value)) {
+                        return (
+                          <div key={key} className="space-y-2">
+                            <h4 className="text-sm font-medium capitalize">Medical Conditions</h4>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Conditions</span>
+                              <span className="font-medium">{value.join(', ')}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Special handling for medical.symptoms array
+                      if (key === 'symptoms' && Array.isArray(value)) {
+                        return (
+                          <div key={key} className="space-y-2">
+                            <h4 className="text-sm font-medium capitalize">Symptoms</h4>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Symptoms</span>
+                              <span className="font-medium">{value.join(', ')}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
                       // For nested objects (like conditions in medical section)
-                      if (key === 'conditions' && typeof value === 'object') {
+                      if (key === 'conditions' && typeof value === 'object' && !Array.isArray(value)) {
                         return (
                           <div key={key} className="space-y-2">
                             <h4 className="text-sm font-medium capitalize">Medical Conditions</h4>
@@ -228,6 +255,7 @@ const ResultDetail = () => {
                           <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
                           <span className="font-medium">
                             {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : 
+                             Array.isArray(value) ? value.join(', ') :
                              typeof value === 'object' ? renderNestedValue(value) : String(value)}
                           </span>
                         </div>
