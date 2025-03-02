@@ -284,7 +284,7 @@ const PatientRegistration = () => {
   const [patientData, setPatientData] = useState<PatientData>({
     firstName: '',
     lastName: '',
-    countryCode: '+1', // Default to US/Canada
+    countryCode: '+250', // Set default to Rwanda
     phoneNumber: '',
     dateOfBirth: undefined,
     sociodemographicData: '',
@@ -309,7 +309,8 @@ const PatientRegistration = () => {
   
   const [confirmVerified, setConfirmVerified] = useState(false);
   const [confirmInformed, setConfirmInformed] = useState(false);
-  const [yearView, setYearView] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(true);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   React.useEffect(() => {
     if (!isAuthenticated) {
@@ -335,7 +336,29 @@ const PatientRegistration = () => {
     if (errors.dateOfBirth) {
       setErrors(prev => ({ ...prev, dateOfBirth: '' }));
     }
-    setYearView(false); // Reset to day view after selecting a date
+    
+    if (date) {
+      setSelectedYear(date.getFullYear());
+      setShowYearPicker(false);
+    }
+  };
+  
+  const handleYearSelect = (year: number) => {
+    setSelectedYear(year);
+    
+    // If we already have a date, update it with the new year
+    if (patientData.dateOfBirth) {
+      const newDate = new Date(patientData.dateOfBirth);
+      newDate.setFullYear(year);
+      handleDateChange(newDate);
+    } else {
+      // Create a new date with the selected year, defaulting to January 1
+      const newDate = new Date(year, 0, 1);
+      handleDateChange(newDate);
+    }
+    
+    // Keep the year picker open
+    setShowYearPicker(false);
   };
   
   const handleSelectChange = (field: string, value: string) => {
@@ -447,10 +470,6 @@ const PatientRegistration = () => {
     }
   };
 
-  const toggleYearView = () => {
-    setYearView(!yearView);
-  };
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -487,26 +506,14 @@ const PatientRegistration = () => {
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <div className="flex">
-                  <Select 
-                    value={patientData.countryCode} 
-                    onValueChange={handleCountryCodeChange}
-                  >
-                    <SelectTrigger className="w-[30%] rounded-r-none border-r-0">
-                      <SelectValue placeholder="Code" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px] overflow-y-auto">
-                      {countryCodes.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.code} {country.country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-center px-3 py-2 bg-gray-100 border border-gray-300 rounded-l-md font-medium text-sm">
+                    +250
+                  </div>
                   <input
                     id="phoneNumber"
                     type="tel"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-l-none rounded-r-md"
-                    placeholder="e.g. 5551234567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-r-md"
+                    placeholder="e.g. 78123456"
                     value={patientData.phoneNumber}
                     onChange={handleChange}
                   />
@@ -545,32 +552,25 @@ const PatientRegistration = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={toggleYearView}
+                        onClick={() => setShowYearPicker(!showYearPicker)}
                         className="text-xs font-medium"
                       >
-                        {yearView ? "View Calendar" : "View Years"}
+                        {showYearPicker ? "Select Month & Day" : "Select Year First"}
                         <ChevronDown className="ml-1 h-4 w-4" />
                       </Button>
                     </div>
-                    {yearView ? (
+                    
+                    {showYearPicker ? (
                       <div className="p-2 h-[260px] overflow-y-auto grid grid-cols-4 gap-2">
                         {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => (
                           <Button
                             key={year}
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              const newDate = patientData.dateOfBirth 
-                                ? new Date(patientData.dateOfBirth) 
-                                : new Date();
-                              newDate.setFullYear(year);
-                              handleDateChange(newDate);
-                            }}
+                            onClick={() => handleYearSelect(year)}
                             className={cn(
                               "text-sm",
-                              patientData.dateOfBirth && patientData.dateOfBirth.getFullYear() === year
-                                ? "bg-primary text-primary-foreground"
-                                : ""
+                              selectedYear === year ? "bg-primary text-primary-foreground" : ""
                             )}
                           >
                             {year}
@@ -583,10 +583,8 @@ const PatientRegistration = () => {
                         selected={patientData.dateOfBirth}
                         onSelect={handleDateChange}
                         initialFocus
+                        defaultMonth={patientData.dateOfBirth || new Date(selectedYear || new Date().getFullYear(), 0)}
                         disabled={(date) => date > new Date()}
-                        captionLayout="dropdown-buttons"
-                        fromYear={1900}
-                        toYear={new Date().getFullYear()}
                       />
                     )}
                   </PopoverContent>
