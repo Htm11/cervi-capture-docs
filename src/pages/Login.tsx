@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -5,10 +6,10 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Mail, Lock, User, AlertTriangle } from 'lucide-react';
+import { Loader2, Mail, Lock, User, AlertTriangle, KeyRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FormField from '@/components/FormField';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login = () => {
   // Login state
@@ -30,6 +31,7 @@ const Login = () => {
   
   // Supabase connection state
   const [supabaseAvailable, setSupabaseAvailable] = useState(true);
+  const [missingKey, setMissingKey] = useState(false);
   
   const { login, register, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ const Login = () => {
     
     if (!supabaseUrl || !supabaseAnonKey) {
       setSupabaseAvailable(false);
+      setMissingKey(!supabaseAnonKey && !!supabaseUrl);
     }
   }, []);
 
@@ -151,10 +154,18 @@ const Login = () => {
           </div>
 
           {!supabaseAvailable && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="warning" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Supabase Connection Issue</AlertTitle>
               <AlertDescription>
-                Supabase connection not available. Using mock authentication for demonstration.
+                {missingKey ? (
+                  <>
+                    <div className="font-medium">Supabase anon key is missing.</div>
+                    <div className="mt-2">You need to add the VITE_SUPABASE_ANON_KEY environment variable. Using mock authentication for now.</div>
+                  </>
+                ) : (
+                  "Supabase connection not available. Using mock authentication for demonstration."
+                )}
               </AlertDescription>
             </Alert>
           )}

@@ -1,14 +1,17 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client with fallback for missing credentials
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+// Use provided URL or fallback
+const supabaseUrl = 'https://lksrlstiabxjoxfkgdat.supabase.co' || import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Create a function to check if Supabase credentials are valid
 const hasValidSupabaseCredentials = () => {
+  if (!supabaseAnonKey) {
+    console.warn('Supabase anon key is missing. Please add VITE_SUPABASE_ANON_KEY to your environment variables.');
+    return false;
+  }
   return supabaseUrl && supabaseAnonKey;
 };
 
@@ -17,7 +20,7 @@ let supabase;
 if (hasValidSupabaseCredentials()) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-  console.warn('Supabase credentials not found. Using mock authentication.');
+  console.warn('Supabase credentials not found or incomplete. Using mock authentication.');
 }
 
 interface Doctor {
