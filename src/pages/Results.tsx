@@ -4,63 +4,29 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Search, Calendar, Phone } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
-
-interface PatientResult {
-  id?: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  dateOfBirth?: string;
-  analysisResult: 'positive' | 'negative';
-  analysisDate: string;
-  beforeAceticImage?: string;
-  afterAceticImage?: string;
-}
-
-// Helper functions to manage results history in localStorage
-export const getResultsHistory = (): PatientResult[] => {
-  const storedResults = localStorage.getItem('resultsHistory');
-  if (!storedResults) return [];
-  
-  try {
-    const parsedResults = JSON.parse(storedResults);
-    return Array.isArray(parsedResults) ? parsedResults : [];
-  } catch (error) {
-    console.error("Error parsing results history:", error);
-    return [];
-  }
-};
-
-export const saveResultToHistory = (result: PatientResult): void => {
-  // Get existing results
-  const existingResults = getResultsHistory();
-  
-  // Generate a unique ID if not present
-  const resultWithId = {
-    ...result,
-    id: result.id || `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  };
-  
-  // Check if this result already exists (by ID)
-  const resultExists = existingResults.some(r => r.id === resultWithId.id);
-  
-  // Save the updated results
-  const updatedResults = resultExists
-    ? existingResults.map(r => r.id === resultWithId.id ? resultWithId : r)
-    : [...existingResults, resultWithId];
-  
-  localStorage.setItem('resultsHistory', JSON.stringify(updatedResults));
-};
+import { ScreeningResult, getDoctorScreeningResults, deleteScreeningResult } from '@/services/screeningService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Results = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const [results, setResults] = useState<PatientResult[]>([]);
+  const [results, setResults] = useState<ScreeningResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -69,76 +35,106 @@ const Results = () => {
       return;
     }
     
-    // Load all historical results from local storage
-    const loadResults = () => {
-      const resultsHistory = getResultsHistory();
-      console.log('Loaded results history:', resultsHistory);
+    const fetchResults = async () => {
+      setIsLoading(true);
       
-      // Sort by date (newest first)
-      resultsHistory.sort((a: PatientResult, b: PatientResult) => 
-        new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-      );
-      
-      setResults(resultsHistory);
-    };
-    
-    // Load results initially
-    loadResults();
-    
-    // Set up event listener for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'resultsHistory') {
-        loadResults();
+      try {
+        if (user?.id) {
+          // Fetch results from the database
+          const doctorResults = await getDoctorScreeningResults(user.id);
+          console.log('Loaded results from database:', doctorResults);
+          setResults(doctorResults);
+        }
+      } catch (error) {
+        console.error('Error fetching results:', error);
+        toast({
+          title: "Error loading results",
+          description: "There was a problem loading your screening results.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [isAuthenticated, navigate]);
+    fetchResults();
+  }, [isAuthenticated, navigate, user, toast]);
   
   // Filter results based on search term
-  const filteredResults = results.filter(result => 
-    `${result.firstName} ${result.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    result.phoneNumber.includes(searchTerm)
-  );
-  
-  const handleResultClick = (result: PatientResult) => {
-    // Set as current patient and navigate to feedback
-    localStorage.setItem('currentPatient', JSON.stringify(result));
+  const filteredResults = results.filter(result => {
+    if (!result.patients) return false;
     
-    // We need to set the images too if available
-    localStorage.setItem('beforeAceticImage', result.beforeAceticImage || '');
-    localStorage.setItem('afterAceticImage', result.afterAceticImage || '');
+    const patientName = `${result.patients.first_name} ${result.patients.last_name}`.toLowerCase();
+    const patientPhone = result.patients.contact_number || '';
+    
+    return patientName.includes(searchTerm.toLowerCase()) || 
+           patientPhone.includes(searchTerm);
+  });
+  
+  const handleResultClick = (result: ScreeningResult) => {
+    // Create patient object from the joined patients data
+    const patient = {
+      id: result.patient_id,
+      firstName: result.patients?.first_name || '',
+      lastName: result.patients?.last_name || '',
+      phoneNumber: result.patients?.contact_number || '',
+      dateOfBirth: result.patients?.date_of_birth || '',
+      analysisResult: result.result,
+      analysisDate: result.created_at || '',
+      beforeAceticImage: result.before_image_url || '',
+      afterAceticImage: result.after_image_url || '',
+    };
+    
+    // Set as current patient and navigate to feedback
+    localStorage.setItem('currentPatient', JSON.stringify(patient));
+    
+    // Set the images
+    localStorage.setItem('beforeAceticImage', patient.beforeAceticImage || '');
+    localStorage.setItem('afterAceticImage', patient.afterAceticImage || '');
     
     navigate('/feedback');
   };
   
-  // For testing: Add a sample result
-  const addSampleResult = () => {
-    const sampleResult: PatientResult = {
-      id: `test_${Date.now()}`,
-      firstName: "Test",
-      lastName: `Patient ${Math.floor(Math.random() * 100)}`,
-      phoneNumber: `+1${Math.floor(Math.random() * 10000000000).toString().padStart(10, '0')}`,
-      dateOfBirth: "1990-01-01",
-      analysisResult: Math.random() > 0.5 ? 'positive' : 'negative',
-      analysisDate: new Date().toISOString(),
-    };
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent triggering the parent onClick
+    setDeleteId(id);
+  };
+  
+  const confirmDelete = async () => {
+    if (!deleteId) return;
     
-    saveResultToHistory(sampleResult);
-    
-    // Reload results
-    setResults(getResultsHistory().sort((a, b) => 
-      new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-    ));
-    
-    toast({
-      title: "Added sample result",
-      description: "A sample patient result was added for testing",
-    });
+    try {
+      const success = await deleteScreeningResult(deleteId);
+      
+      if (success) {
+        // Remove the deleted result from the state
+        setResults(prevResults => prevResults.filter(r => r.id !== deleteId));
+        
+        toast({
+          title: "Result deleted",
+          description: "The screening result has been deleted successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not delete the screening result.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while deleting the result.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteId(null);
+    }
+  };
+  
+  const cancelDelete = () => {
+    setDeleteId(null);
   };
   
   return (
@@ -146,13 +142,6 @@ const Results = () => {
       <div className="w-full max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Patient Results History</h1>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={addSampleResult}
-          >
-            Add Sample (Test)
-          </Button>
         </div>
         
         {/* Search input */}
@@ -166,7 +155,11 @@ const Results = () => {
           />
         </div>
         
-        {filteredResults.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
+          </div>
+        ) : filteredResults.length === 0 ? (
           <div className="bg-white rounded-lg p-6 text-center shadow-sm">
             <p className="text-muted-foreground">No patient results found</p>
             <Button 
@@ -178,22 +171,24 @@ const Results = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredResults.map((result, index) => (
+            {filteredResults.map((result) => (
               <div 
-                key={result.id || index}
-                className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                key={result.id}
+                className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
                 onClick={() => handleResultClick(result)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="font-medium">{result.firstName} {result.lastName}</h3>
+                    <h3 className="font-medium">
+                      {result.patients?.first_name} {result.patients?.last_name}
+                    </h3>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
                       <Phone className="h-3 w-3 mr-1" />
-                      <span>{result.phoneNumber}</span>
+                      <span>{result.patients?.contact_number || 'No phone number'}</span>
                     </div>
                   </div>
                   
-                  {result.analysisResult === 'positive' ? (
+                  {result.result === 'positive' ? (
                     <div className="flex items-center text-red-500 bg-red-50 py-1 px-2 rounded">
                       <XCircle className="h-4 w-4 mr-1" />
                       <span className="text-xs font-medium">Positive</span>
@@ -209,16 +204,48 @@ const Results = () => {
                 <div className="flex items-center text-xs text-muted-foreground mt-2">
                   <Calendar className="h-3 w-3 mr-1" />
                   <span>
-                    {result.analysisDate 
-                      ? format(new Date(result.analysisDate), 'MMM d, yyyy') 
+                    {result.created_at 
+                      ? format(new Date(result.created_at), 'MMM d, yyyy') 
                       : 'Date not available'}
                   </span>
                 </div>
+                
+                {/* Delete button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute bottom-2 right-2 h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-transparent"
+                  onClick={(e) => handleDeleteClick(e, result.id || '')}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
         )}
       </div>
+      
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => !deleteId && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              screening result from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

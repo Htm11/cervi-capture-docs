@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { Doctor } from '@/types/auth';
@@ -163,5 +162,30 @@ export const getDoctorScreeningResults = async (
   } catch (error) {
     console.error('Error in getDoctorScreeningResults:', error);
     return [];
+  }
+};
+
+// Delete a screening result
+export const deleteScreeningResult = async (resultId: string): Promise<boolean> => {
+  try {
+    if (!supabase) {
+      console.error('Supabase client is not initialized');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('screening_results')
+      .delete()
+      .eq('id', resultId);
+
+    if (error) {
+      console.error('Error deleting screening result:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteScreeningResult:', error);
+    return false;
   }
 };
