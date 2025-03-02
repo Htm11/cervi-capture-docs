@@ -2,16 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js';
 
-// Use provided URL or fallback
-const supabaseUrl = 'https://lksrlstiabxjoxfkgdat.supabase.co' || import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Initialize Supabase client with provided credentials
+const supabaseUrl = 'https://lksrlstiabxjoxfkgdat.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxrc3Jsc3RpYWJ4am94ZmtnZGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5MDI5NTMsImV4cCI6MjA1NjQ3ODk1M30.jXyjs00Tat9Tfn_9VlGuZthZb_5slJHPF7C_zHM9X2M';
 
 // Create a function to check if Supabase credentials are valid
 const hasValidSupabaseCredentials = () => {
-  if (!supabaseAnonKey) {
-    console.warn('Supabase anon key is missing. Please add VITE_SUPABASE_ANON_KEY to your environment variables.');
-    return false;
-  }
   return supabaseUrl && supabaseAnonKey;
 };
 

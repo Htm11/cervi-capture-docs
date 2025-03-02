@@ -1,15 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Mail, Lock, User, AlertTriangle, KeyRound } from 'lucide-react';
+import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FormField from '@/components/FormField';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Login = () => {
   // Login state
@@ -29,24 +27,9 @@ const Login = () => {
     confirmPassword: '' 
   });
   
-  // Supabase connection state
-  const [supabaseAvailable, setSupabaseAvailable] = useState(true);
-  const [missingKey, setMissingKey] = useState(false);
-  
   const { login, register, isLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("login");
-
-  // Check if Supabase credentials are available
-  useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      setSupabaseAvailable(false);
-      setMissingKey(!supabaseAnonKey && !!supabaseUrl);
-    }
-  }, []);
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
@@ -152,23 +135,6 @@ const Login = () => {
                 : "Create a new account to get started"}
             </p>
           </div>
-
-          {!supabaseAvailable && (
-            <Alert variant="warning" className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Supabase Connection Issue</AlertTitle>
-              <AlertDescription>
-                {missingKey ? (
-                  <>
-                    <div className="font-medium">Supabase anon key is missing.</div>
-                    <div className="mt-2">You need to add the VITE_SUPABASE_ANON_KEY environment variable. Using mock authentication for now.</div>
-                  </>
-                ) : (
-                  "Supabase connection not available. Using mock authentication for demonstration."
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
 
           <div className="glass bg-white/90 p-8 rounded-xl shadow-lg border border-cervi-200">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
