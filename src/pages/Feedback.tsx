@@ -8,7 +8,7 @@ import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import { saveResultToHistory } from '@/pages/Results';
-import { uploadScreeningImage, saveScreeningResult } from '@/services/screeningService';
+import { uploadScreeningImage, saveScreeningResult, ensurePatientExists } from '@/services/screeningService';
 
 const steps: Step[] = [
   { id: 1, label: "Basic Info" },
@@ -112,24 +112,27 @@ const Feedback = () => {
     setIsSaving(true);
     
     try {
-      // First upload the images to Supabase Storage
+      // First ensure we have a valid patient ID
+      const validPatientId = await ensurePatientExists(patientData, currentDoctor.id);
+      
+      // Then upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
         beforeImage,
         currentDoctor.id,
-        patientData.id || 'temp-patient-id',
+        validPatientId,
         'before'
       );
       
       const afterImageUrl = await uploadScreeningImage(
         afterImage,
         currentDoctor.id,
-        patientData.id || 'temp-patient-id',
+        validPatientId,
         'after'
       );
       
       // Then save the screening result to the database
       const screeningResult = {
-        patient_id: patientData.id || 'temp-patient-id',
+        patient_id: validPatientId,
         doctor_id: currentDoctor.id,
         before_image_url: beforeImageUrl,
         after_image_url: afterImageUrl,
@@ -146,6 +149,13 @@ const Feedback = () => {
           title: "Result saved",
           description: "The screening result has been saved to the database",
         });
+        
+        // Update local storage with the valid patient ID for future reference
+        const updatedPatientData = {
+          ...patientData,
+          id: validPatientId
+        };
+        localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
       } else {
         throw new Error('Failed to save result');
       }

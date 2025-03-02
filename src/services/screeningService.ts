@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
+import { getPatient, createPatient } from './patientService';
 
 export interface ScreeningResult {
   id?: string;
@@ -59,6 +60,43 @@ export const uploadScreeningImage = async (
   } catch (error) {
     console.error('Error in uploadScreeningImage:', error);
     return null;
+  }
+};
+
+// Check if patient exists and create if needed
+export const ensurePatientExists = async (
+  patientData: any,
+  doctorId: string
+): Promise<string> => {
+  try {
+    // First check if this is a real patient ID already in the database
+    if (patientData.id && patientData.id !== 'temp-patient-id') {
+      const existingPatient = await getPatient(patientData.id);
+      if (existingPatient) {
+        return patientData.id;
+      }
+    }
+    
+    // If we reach here, we need to create a real patient
+    const newPatient = {
+      doctor_id: doctorId,
+      first_name: patientData.firstName || 'Unknown',
+      last_name: patientData.lastName || 'Patient',
+      date_of_birth: patientData.dateOfBirth || new Date().toISOString().split('T')[0],
+      contact_number: patientData.phoneNumber || null,
+      email: patientData.email || null,
+      medical_history: patientData.medicalHistory || null
+    };
+    
+    const createdPatient = await createPatient(newPatient);
+    if (createdPatient) {
+      return createdPatient.id || '';
+    } else {
+      throw new Error('Failed to create patient');
+    }
+  } catch (error) {
+    console.error('Error in ensurePatientExists:', error);
+    throw error;
   }
 };
 

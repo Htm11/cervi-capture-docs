@@ -49,6 +49,12 @@ export const getPatient = async (patientId: string): Promise<Patient | null> => 
       return null;
     }
 
+    // Check if patientId is a valid UUID before querying
+    if (!patientId || patientId === 'temp-patient-id' || patientId.length < 36) {
+      console.warn('Invalid patient ID provided:', patientId);
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('patients')
       .select('*')
@@ -77,6 +83,11 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
     if (!supabase) {
       console.error('Supabase client is not initialized');
       return null;
+    }
+
+    // Ensure date_of_birth is a valid date string
+    if (!patient.date_of_birth || patient.date_of_birth === 'Invalid Date') {
+      patient.date_of_birth = new Date().toISOString().split('T')[0];
     }
 
     const { data, error } = await supabase
