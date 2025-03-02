@@ -1,8 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
-import { Session, User, AuthError } from '@supabase/supabase-js';
 
 interface Doctor {
   id: string;
@@ -15,221 +13,78 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Check if we're in a development environment without Supabase credentials
-const isDevelopmentWithoutSupabase = 
-  import.meta.env.DEV && 
-  (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Check for active session on initial load
+  // Check for saved user on initial load
   useEffect(() => {
-    setIsLoading(true);
-    
-    const fetchSession = async () => {
-      // If in development without Supabase, use mock data
-      if (isDevelopmentWithoutSupabase) {
-        console.warn('Running in development mode without Supabase credentials. Using mock authentication.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Get session from Supabase
+    const savedDoctor = localStorage.getItem('cerviDoctor');
+    if (savedDoctor) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            setCurrentDoctor({
-              id: user.id,
-              email: user.email || '',
-              name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0] || 'User'}`
-            });
-          }
-        }
+        setCurrentDoctor(JSON.parse(savedDoctor));
       } catch (error) {
-        console.error('Error fetching session:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to parse saved doctor', error);
+        localStorage.removeItem('cerviDoctor');
       }
-    };
-    
-    fetchSession();
-    
-    // Only set up auth state change listener if Supabase is configured
-    if (!isDevelopmentWithoutSupabase) {
-      // Set up auth state change listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (event === 'SIGNED_IN' && session?.user) {
-            setCurrentDoctor({
-              id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.user_metadata?.name || `Dr. ${session.user.email?.split('@')[0] || 'User'}`
-            });
-          } else if (event === 'SIGNED_OUT') {
-            setCurrentDoctor(null);
-          }
-        }
-      );
-      
-      return () => {
-        subscription.unsubscribe();
-      };
     }
+    setIsLoading(false);
   }, []);
 
-  // Real login function with Supabase
+  // Mock login function - modified to always succeed for testing
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // If in development without Supabase, use mock login
-    if (isDevelopmentWithoutSupabase) {
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
-      setCurrentDoctor({
-        id: '123',
-        email: email,
-        name: `Dr. ${email.split('@')[0] || 'User'}`
-      });
-      toast({
-        title: "Development login successful",
-        description: `Welcome back, Dr. ${email.split('@')[0] || 'User'}`,
-      });
-      setIsLoading(false);
-      return true;
-    }
+    // Simulate API call delay (reduced for testing)
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // For testing, always succeed regardless of input
+      // Use provided email or a default
+      const userEmail = email || 'test@example.com';
+      
+      // Mocked doctor data - would come from your API
+      const mockDoctor: Doctor = {
+        id: '123456',
+        name: 'Dr. ' + userEmail.split('@')[0],
+        email: userEmail
+      };
+      
+      setCurrentDoctor(mockDoctor);
+      localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+      
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${mockDoctor.name}`,
       });
       
-      if (error) {
-        throw error;
-      }
-      
-      if (data.user) {
-        toast({
-          title: "Login successful",
-          description: `Welcome back, Dr. ${data.user.email?.split('@')[0] || 'User'}`,
-        });
-        return true;
-      }
-      
-      return false;
+      return true;
     } catch (error) {
-      const authError = error as AuthError;
-      console.error('Login error:', authError);
-      
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: authError.message || "An error occurred during login",
+        description: "An error occurred during login",
         variant: "destructive",
       });
-      
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // New signup function with Supabase
-  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // If in development without Supabase, use mock signup
-    if (isDevelopmentWithoutSupabase) {
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
-      setCurrentDoctor({
-        id: '123',
-        email: email,
-        name: name || `Dr. ${email.split('@')[0]}`
-      });
-      toast({
-        title: "Development account created",
-        description: "Account created successfully in development mode",
-      });
-      setIsLoading(false);
-      return true;
-    }
-    
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name || `Dr. ${email.split('@')[0]}`,
-          }
-        }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data.user) {
-        toast({
-          title: "Account created successfully",
-          description: "Please check your email to verify your account",
-        });
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      const authError = error as AuthError;
-      console.error('Signup error:', authError);
-      
-      toast({
-        title: "Signup failed",
-        description: authError.message || "An error occurred during signup",
-        variant: "destructive",
-      });
-      
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
-    // If in development without Supabase, use mock logout
-    if (isDevelopmentWithoutSupabase) {
-      setCurrentDoctor(null);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
-      return;
-    }
-    
-    try {
-      await supabase.auth.signOut();
-      setCurrentDoctor(null);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast({
-        title: "Logout failed",
-        description: "An error occurred during logout",
-        variant: "destructive",
-      });
-    }
+  const logout = () => {
+    setCurrentDoctor(null);
+    localStorage.removeItem('cerviDoctor');
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
   };
 
   return (
@@ -239,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!currentDoctor,
         isLoading,
         login,
-        signup,
         logout
       }}
     >
