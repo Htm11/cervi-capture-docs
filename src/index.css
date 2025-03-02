@@ -54,11 +54,18 @@
   html {
     font-family: 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
+    height: 100%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  #root {
+    height: 100%;
   }
 
   /* Glass morphism utility classes */
@@ -77,6 +84,13 @@
 
   .bg-cervi-gradient-reverse {
     @apply bg-gradient-to-r from-cervi-200 to-pink-200;
+  }
+
+  /* Desktop styles for login page */
+  @media (min-width: 1024px) {
+    .login-desktop {
+      @apply min-h-screen w-full fixed top-0 left-0 right-0 bottom-0;
+    }
   }
 
   /* Page transitions */
@@ -116,4 +130,3 @@
     @apply rounded-xl overflow-hidden shadow-lg;
   }
 }
-

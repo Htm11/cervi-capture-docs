@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -120,8 +121,8 @@ const Login = () => {
   };
 
   return (
-    <Layout hideHeader className="bg-gradient-to-b from-cervi-50 via-cervi-100 to-white">
-      <div className="flex flex-col items-center justify-center min-h-screen p-6">
+    <Layout hideHeader className="bg-gradient-to-b from-cervi-50 via-cervi-100 to-white min-h-screen w-full">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 w-full">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <img 
