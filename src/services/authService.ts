@@ -38,18 +38,45 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
         };
       }
 
-      // Success - return the user data
+      // Success - get user data from doctors table
       if (data.user) {
-        const userData = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user.user_metadata?.name || `Dr. ${email.split('@')[0]}`
-        };
-        
-        return {
-          success: true,
-          doctor: userData
-        };
+        try {
+          // Fetch the doctor data from the doctors table
+          const { data: doctorData, error: doctorError } = await supabase
+            .from('doctors')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (doctorError) {
+            console.error('Error fetching doctor profile:', doctorError);
+          }
+          
+          const userData: Doctor = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: doctorData?.name || data.user.user_metadata?.name || `Dr. ${email.split('@')[0]}`
+          };
+          
+          return {
+            success: true,
+            doctor: userData
+          };
+        } catch (profileError) {
+          console.error('Error getting doctor profile:', profileError);
+          
+          // Fallback to basic user data if profile fetch fails
+          const userData: Doctor = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name || `Dr. ${email.split('@')[0]}`
+          };
+          
+          return {
+            success: true,
+            doctor: userData
+          };
+        }
       }
       
       return {
@@ -118,9 +145,10 @@ export const registerUser = async (email: string, password: string, name: string
         };
       }
 
-      // Success - return the user data
+      // Success - doctor profile will be created automatically via database trigger
       if (data.user) {
-        const userData = {
+        // Create doctor object from the user data
+        const userData: Doctor = {
           id: data.user.id,
           email: data.user.email || email,
           name: name || `Dr. ${email.split('@')[0]}`
@@ -194,14 +222,37 @@ export const checkSession = async (): Promise<Doctor | null> => {
       
       if (session) {
         const { user } = session;
-        // Get user metadata if available
-        const userData = {
+        
+        try {
+          // Fetch the doctor data from the doctors table
+          const { data: doctorData, error: doctorError } = await supabase
+            .from('doctors')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (doctorError) {
+            console.error('Error fetching doctor profile:', doctorError);
+          }
+          
+          if (doctorData) {
+            // Return doctor data from the database
+            return {
+              id: user.id,
+              email: doctorData.email || user.email || '',
+              name: doctorData.name || user.user_metadata?.name || `Dr. ${user.email?.split('@')[0] || 'Doctor'}`
+            };
+          }
+        } catch (profileError) {
+          console.error('Error getting doctor profile:', profileError);
+        }
+        
+        // Fallback to basic user metadata if profile fetch fails
+        return {
           id: user.id,
           email: user.email || '',
-          name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0]}` || 'Doctor'
+          name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0] || 'Doctor'}`
         };
-        
-        return userData;
       }
     }
     

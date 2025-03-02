@@ -3,6 +3,9 @@ export interface Doctor {
   id: string;
   name: string;
   email: string;
+  specialty?: string;
+  license_number?: string;
+  hospital_affiliation?: string;
 }
 
 export interface AuthContextType {

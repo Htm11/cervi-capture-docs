@@ -1,5 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
 // Get Supabase credentials from environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lksrlstiabxjoxfkgdat.supabase.co';
@@ -11,11 +12,11 @@ export const hasValidSupabaseCredentials = () => {
 };
 
 // Initialize Supabase client
-let supabase;
+let supabase: ReturnType<typeof createClient<Database>> | null = null;
 
 try {
   if (hasValidSupabaseCredentials()) {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
     console.log('Supabase client initialized successfully');
   } else {
     console.warn('Valid Supabase credentials not found. Some features may be unavailable.');
