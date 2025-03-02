@@ -3,11 +3,22 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Initialize Supabase client with fallback for missing credentials
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create a function to check if Supabase credentials are valid
+const hasValidSupabaseCredentials = () => {
+  return supabaseUrl && supabaseAnonKey;
+};
+
+// Initialize Supabase client only if credentials are available
+let supabase;
+if (hasValidSupabaseCredentials()) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  console.warn('Supabase credentials not found. Using mock authentication.');
+}
 
 interface Doctor {
   id: string;
@@ -35,22 +46,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Try to get the session from Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { user } = session;
-          // Get user metadata if available
-          const userData = {
-            id: user.id,
-            email: user.email || '',
-            name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0]}` || 'Doctor'
-          };
+        // Try to get the session from Supabase if credentials are available
+        if (hasValidSupabaseCredentials() && supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
           
-          setCurrentDoctor(userData);
-          localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+          if (session) {
+            const { user } = session;
+            // Get user metadata if available
+            const userData = {
+              id: user.id,
+              email: user.email || '',
+              name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0]}` || 'Doctor'
+            };
+            
+            setCurrentDoctor(userData);
+            localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+          } else {
+            // Try fallback to local storage if no active session
+            const savedDoctor = localStorage.getItem('cerviDoctor');
+            if (savedDoctor) {
+              try {
+                setCurrentDoctor(JSON.parse(savedDoctor));
+              } catch (error) {
+                console.error('Failed to parse saved doctor', error);
+                localStorage.removeItem('cerviDoctor');
+              }
+            }
+          }
         } else {
-          // Try fallback to local storage if no active session
+          // Fallback to localStorage if Supabase is not available
           const savedDoctor = localStorage.getItem('cerviDoctor');
           if (savedDoctor) {
             try {
@@ -82,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkSession();
   }, []);
 
-  // Login with Supabase
+  // Login with Supabase or mock in dev mode
   const login = async (email: string, password: string): Promise<boolean> => {
     if (!email || !password) {
       toast({
@@ -95,63 +119,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsLoading(true);
     try {
-      // Try to login with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Try to login with Supabase if credentials are available
+      if (hasValidSupabaseCredentials() && supabase) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
 
-      if (error) {
-        console.error('Supabase login error:', error);
-        
-        // If we're in development mode, allow mock login for testing
-        if (import.meta.env.DEV) {
-          console.log('Using mock login for development');
-          const mockDoctor: Doctor = {
-            id: '123456',
-            name: 'Dr. ' + email.split('@')[0],
-            email: email
-          };
+        if (error) {
+          console.error('Supabase login error:', error);
           
-          setCurrentDoctor(mockDoctor);
-          localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+          // If we're in development mode, allow mock login for testing
+          if (import.meta.env.DEV) {
+            console.log('Using mock login for development');
+            const mockDoctor: Doctor = {
+              id: '123456',
+              name: 'Dr. ' + email.split('@')[0],
+              email: email
+            };
+            
+            setCurrentDoctor(mockDoctor);
+            localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+            
+            toast({
+              title: "DEV MODE: Mock login successful",
+              description: `Welcome back, ${mockDoctor.name}`,
+            });
+            
+            return true;
+          }
           
           toast({
-            title: "DEV MODE: Mock login successful",
-            description: `Welcome back, ${mockDoctor.name}`,
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive",
+          });
+          return false;
+        }
+
+        // Success - save the user data
+        if (data.user) {
+          const userData = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name || `Dr. ${email.split('@')[0]}`
+          };
+          
+          setCurrentDoctor(userData);
+          localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+          
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${userData.name}`,
           });
           
           return true;
         }
         
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
         return false;
-      }
-
-      // Success - save the user data
-      if (data.user) {
-        const userData = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user.user_metadata?.name || `Dr. ${email.split('@')[0]}`
+      } else {
+        // Fallback for when Supabase is not available
+        console.log('Supabase not available, using mock login');
+        const mockDoctor: Doctor = {
+          id: '123456',
+          name: 'Dr. ' + email.split('@')[0],
+          email: email
         };
         
-        setCurrentDoctor(userData);
-        localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+        setCurrentDoctor(mockDoctor);
+        localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
         
         toast({
-          title: "Login successful",
-          description: `Welcome back, ${userData.name}`,
+          title: "Mock login successful",
+          description: `Welcome back, ${mockDoctor.name}. Note: Supabase connection not available.`,
         });
         
         return true;
       }
-      
-      return false;
     } catch (error) {
       console.error('Login error:', error);
       
@@ -186,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Register with Supabase
+  // Register with Supabase or mock in dev mode
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
     if (!email || !password) {
       toast({
@@ -199,67 +243,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setIsLoading(true);
     try {
-      // Try to register with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name || `Dr. ${email.split('@')[0]}`
+      // Try to register with Supabase if credentials are available
+      if (hasValidSupabaseCredentials() && supabase) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: name || `Dr. ${email.split('@')[0]}`
+            }
           }
-        }
-      });
-
-      if (error) {
-        console.error('Supabase registration error:', error);
-        toast({
-          title: "Registration failed",
-          description: error.message,
-          variant: "destructive",
         });
-        return false;
-      }
 
-      // Check if email confirmation is required
-      if (data.user && data.user.identities && data.user.identities.length === 0) {
-        toast({
-          title: "Email verification required",
-          description: "Please check your email to confirm your account",
-        });
-        return false;
-      }
-
-      // Success - save the user data
-      if (data.user) {
-        const userData = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: name || `Dr. ${email.split('@')[0]}`
-        };
-        
-        // If auto-confirmation is enabled in Supabase, the user will be logged in
-        if (data.session) {
-          setCurrentDoctor(userData);
-          localStorage.setItem('cerviDoctor', JSON.stringify(userData));
-          
+        if (error) {
+          console.error('Supabase registration error:', error);
           toast({
-            title: "Registration successful",
-            description: `Welcome, ${userData.name}`,
+            title: "Registration failed",
+            description: error.message,
+            variant: "destructive",
           });
-          
-          return true;
-        } else {
+          return false;
+        }
+
+        // Check if email confirmation is required
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
           toast({
-            title: "Registration successful",
+            title: "Email verification required",
             description: "Please check your email to confirm your account",
           });
           return false;
         }
+
+        // Success - save the user data
+        if (data.user) {
+          const userData = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: name || `Dr. ${email.split('@')[0]}`
+          };
+          
+          // If auto-confirmation is enabled in Supabase, the user will be logged in
+          if (data.session) {
+            setCurrentDoctor(userData);
+            localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+            
+            toast({
+              title: "Registration successful",
+              description: `Welcome, ${userData.name}`,
+            });
+            
+            return true;
+          } else {
+            toast({
+              title: "Registration successful",
+              description: "Please check your email to confirm your account",
+            });
+            return false;
+          }
+        }
+        
+        return false;
+      } else {
+        // Fallback for when Supabase is not available
+        console.log('Supabase not available, using mock registration');
+        const mockDoctor: Doctor = {
+          id: '123456',
+          name: name || 'Dr. ' + email.split('@')[0],
+          email: email
+        };
+        
+        setCurrentDoctor(mockDoctor);
+        localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+        
+        toast({
+          title: "Mock registration successful",
+          description: `Welcome, ${mockDoctor.name}. Note: Supabase connection not available.`,
+        });
+        
+        return true;
       }
-      
-      return false;
     } catch (error) {
       console.error('Registration error:', error);
+      
+      // Fallback for development
+      if (import.meta.env.DEV) {
+        console.log('Using mock registration for development due to error');
+        const mockDoctor: Doctor = {
+          id: '123456',
+          name: name || 'Dr. ' + email.split('@')[0],
+          email: email
+        };
+        
+        setCurrentDoctor(mockDoctor);
+        localStorage.setItem('cerviDoctor', JSON.stringify(mockDoctor));
+        
+        toast({
+          title: "DEV MODE: Mock registration successful",
+          description: `Welcome, ${mockDoctor.name}`,
+        });
+        
+        return true;
+      }
+      
       toast({
         title: "Registration failed",
         description: "An error occurred during registration",
@@ -273,7 +358,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      if (hasValidSupabaseCredentials() && supabase) {
+        await supabase.auth.signOut();
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }
