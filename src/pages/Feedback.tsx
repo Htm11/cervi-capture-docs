@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
+import { CheckCircle, Camera, Home, XCircle, Timer } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import { saveResultToHistory } from '@/pages/Results';
@@ -30,6 +30,7 @@ const Feedback = () => {
   const [resultSaved, setResultSaved] = useState<boolean>(false);
   
   const [showAnimation, setShowAnimation] = useState(true);
+  const [countdown, setCountdown] = useState(3);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -70,28 +71,50 @@ const Feedback = () => {
       const patient = JSON.parse(patientDataString);
       setPatientData(patient);
       
-      // Generate random result for demo
-      const result = Math.random() > 0.5 ? 'positive' : 'negative';
-      setAnalysisResult(result);
+      // Countdown timer for showing the result
+      const countdownInterval = setInterval(() => {
+        setCountdown(prevCount => {
+          if (prevCount <= 1) {
+            clearInterval(countdownInterval);
+            
+            // Generate random result for demo after countdown completes
+            const result = Math.random() > 0.5 ? 'positive' : 'negative';
+            setAnalysisResult(result);
+            
+            // Update patient data with result
+            const updatedPatient = {
+              ...patient,
+              analysisResult: result,
+              analysisDate: new Date().toISOString(),
+              beforeAceticImage: beforeAceticImage,
+              afterAceticImage: afterAceticImage
+            };
+            
+            // Save back to localStorage to preserve all data
+            localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
+            
+            // Save to history
+            saveResultToHistory(updatedPatient);
+            
+            window.dispatchEvent(new StorageEvent('storage', {
+              key: 'resultsHistory'
+            }));
+            
+            return 0;
+          }
+          return prevCount - 1;
+        });
+      }, 1000);
       
-      // Update patient data with result
-      const updatedPatient = {
-        ...patient,
-        analysisResult: result,
-        analysisDate: new Date().toISOString(),
-        beforeAceticImage: beforeAceticImage,
-        afterAceticImage: afterAceticImage
+      // Hide animation after 2.5 seconds
+      const animationTimer = setTimeout(() => {
+        setShowAnimation(false);
+      }, 2500);
+      
+      return () => {
+        clearInterval(countdownInterval);
+        clearTimeout(animationTimer);
       };
-      
-      // Save back to localStorage to preserve all data
-      localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
-      
-      // Save to history
-      saveResultToHistory(updatedPatient);
-      
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'resultsHistory'
-      }));
     } catch (error) {
       console.error('Error processing patient data:', error);
       toast({
@@ -100,12 +123,6 @@ const Feedback = () => {
         variant: "destructive",
       });
     }
-    
-    const timer = setTimeout(() => {
-      setShowAnimation(false);
-    }, 2500);
-    
-    return () => clearTimeout(timer);
   }, [isAuthenticated, navigate, toast]);
   
   const saveToDatabase = async () => {
@@ -217,6 +234,14 @@ const Feedback = () => {
             </div>
             <h2 className="text-2xl font-semibold text-center mb-2">Analysis Complete</h2>
             <p className="text-center text-muted-foreground">Your images have been analyzed and meet the quality requirements</p>
+          </div>
+        ) : countdown > 0 ? (
+          <div className="flex flex-col items-center justify-center p-6 animate-pulse">
+            <div className="w-24 h-24 rounded-full bg-cervi-100 flex items-center justify-center mb-6">
+              <Timer className="h-12 w-12 text-cervi-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-center mb-2">{countdown}</h2>
+            <p className="text-center text-muted-foreground">Analyzing results...</p>
           </div>
         ) : (
           <>
