@@ -91,8 +91,6 @@ export type Database = {
       }
       screening_results: {
         Row: {
-          after_image_url: string | null
-          before_image_url: string | null
           confidence: number | null
           created_at: string
           doctor_id: string
@@ -104,8 +102,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          after_image_url?: string | null
-          before_image_url?: string | null
           confidence?: number | null
           created_at?: string
           doctor_id: string
@@ -117,8 +113,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          after_image_url?: string | null
-          before_image_url?: string | null
           confidence?: number | null
           created_at?: string
           doctor_id?: string

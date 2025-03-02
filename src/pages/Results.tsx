@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Results = () => {
-  const { isAuthenticated, currentDoctor } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<ScreeningResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,9 +39,9 @@ const Results = () => {
       setIsLoading(true);
       
       try {
-        if (currentDoctor?.id) {
+        if (user?.id) {
           // Fetch results from the database
-          const doctorResults = await getDoctorScreeningResults(currentDoctor.id);
+          const doctorResults = await getDoctorScreeningResults(user.id);
           console.log('Loaded results from database:', doctorResults);
           setResults(doctorResults);
         }
@@ -58,13 +58,11 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [isAuthenticated, navigate, currentDoctor, toast]);
+  }, [isAuthenticated, navigate, user, toast]);
   
+  // Filter results based on search term
   const filteredResults = results.filter(result => {
-    if (!result.patients) {
-      // If there's no patient data, include in results but can't search
-      return !searchTerm;
-    }
+    if (!result.patients) return false;
     
     const patientName = `${result.patients.first_name} ${result.patients.last_name}`.toLowerCase();
     const patientPhone = result.patients.contact_number || '';
@@ -74,7 +72,7 @@ const Results = () => {
   });
   
   const handleResultClick = (result: ScreeningResult) => {
-    // Make sure we handle cases where patient data might be missing
+    // Create patient object from the joined patients data
     const patient = {
       id: result.patient_id,
       firstName: result.patients?.first_name || '',
@@ -182,16 +180,12 @@ const Results = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-medium">
-                      {result.patients ? 
-                        `${result.patients.first_name} ${result.patients.last_name}` : 
-                        `Patient ID: ${result.patient_id.substring(0, 8)}...`}
+                      {result.patients?.first_name} {result.patients?.last_name}
                     </h3>
-                    {result.patients && (
-                      <div className="flex items-center text-sm text-muted-foreground mt-1">
-                        <Phone className="h-3 w-3 mr-1" />
-                        <span>{result.patients.contact_number || 'No phone number'}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
+                      <Phone className="h-3 w-3 mr-1" />
+                      <span>{result.patients?.contact_number || 'No phone number'}</span>
+                    </div>
                   </div>
                   
                   {result.result === 'positive' ? (
@@ -257,22 +251,3 @@ const Results = () => {
 };
 
 export default Results;
-
-export const saveResultToHistory = (patientData: any) => {
-  try {
-    // Save to local storage history
-    const existingHistoryStr = localStorage.getItem('resultsHistory');
-    const existingHistory = existingHistoryStr ? JSON.parse(existingHistoryStr) : [];
-    
-    // Add the new result
-    const updatedHistory = [patientData, ...existingHistory];
-    
-    // Save back to local storage
-    localStorage.setItem('resultsHistory', JSON.stringify(updatedHistory));
-    
-    return true;
-  } catch (error) {
-    console.error('Error saving result to history:', error);
-    return false;
-  }
-};

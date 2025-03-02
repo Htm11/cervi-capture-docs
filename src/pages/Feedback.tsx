@@ -93,19 +93,14 @@ const Feedback = () => {
     // Hide animation after delay
     const timer = setTimeout(() => {
       setShowAnimation(false);
-      
-      // Automatically save results to database when animation completes
-      if (currentDoctor && patientData && beforeAceticImage && afterAceticImage && result) {
-        saveToDatabase(beforeAceticImage, afterAceticImage, result);
-      }
     }, 2500);
     
     return () => clearTimeout(timer);
   }, [isAuthenticated, navigate, toast]);
   
   // Save result to Supabase
-  const saveToDatabase = async (beforeImg: string, afterImg: string, result: 'positive' | 'negative') => {
-    if (!currentDoctor || !patientData) {
+  const saveToDatabase = async () => {
+    if (!currentDoctor || !patientData || !beforeImage || !afterImage || !analysisResult) {
       toast({
         title: "Cannot save result",
         description: "Missing required data for saving the result",
@@ -119,14 +114,14 @@ const Feedback = () => {
     try {
       // First upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
-        beforeImg,
+        beforeImage,
         currentDoctor.id,
         patientData.id || 'temp-patient-id',
         'before'
       );
       
       const afterImageUrl = await uploadScreeningImage(
-        afterImg,
+        afterImage,
         currentDoctor.id,
         patientData.id || 'temp-patient-id',
         'after'
@@ -138,7 +133,7 @@ const Feedback = () => {
         doctor_id: currentDoctor.id,
         before_image_url: beforeImageUrl,
         after_image_url: afterImageUrl,
-        result: result,
+        result: analysisResult,
         confidence: 0.85, // Mock confidence value
         notes: `Screening performed on ${new Date().toLocaleDateString()}`
       };
@@ -276,15 +271,18 @@ const Feedback = () => {
                 
                 {/* Database Save Status */}
                 <div className="mt-4">
-                  {resultSaved && (
+                  {!resultSaved ? (
+                    <Button 
+                      onClick={saveToDatabase} 
+                      disabled={isSaving || !currentDoctor}
+                      className="w-full bg-cervi-500 hover:bg-cervi-600 text-white"
+                    >
+                      {isSaving ? 'Saving to Database...' : 'Save Result to Database'}
+                    </Button>
+                  ) : (
                     <div className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg border border-green-100">
                       <CheckCircle className="h-5 w-5 text-green-500" />
-                      <p className="text-sm text-green-700">Result saved to database</p>
-                    </div>
-                  )}
-                  {isSaving && (
-                    <div className="flex items-center space-x-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
-                      <p className="text-sm text-blue-700">Saving result to database...</p>
+                      <p className="text-sm text-green-700">Result saved successfully</p>
                     </div>
                   )}
                 </div>

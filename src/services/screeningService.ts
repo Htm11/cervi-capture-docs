@@ -73,8 +73,6 @@ export const saveScreeningResult = async (
       return null;
     }
 
-    console.log("Saving screening result:", result);
-
     // Ensure doctor_id is set to the current doctor
     const resultWithDoctor = {
       ...result,
@@ -91,8 +89,6 @@ export const saveScreeningResult = async (
       console.error('Error saving screening result:', error);
       throw error;
     }
-
-    console.log("Successfully saved result:", data);
 
     // Ensure the result is cast to the correct type
     return {
@@ -147,37 +143,15 @@ export const getDoctorScreeningResults = async (
       return [];
     }
 
-    console.log("Fetching results for doctor:", doctorId);
-
-    // Use left join instead of inner join to get all results even if patient record is missing
     const { data, error } = await supabase
       .from('screening_results')
-      .select('*, patients(*)')
+      .select('*, patients!inner(*)')
       .eq('doctor_id', doctorId)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching doctor screening results:', error);
       throw error;
-    }
-
-    console.log("Raw results from database:", data);
-
-    // If no results, log to understand why
-    if (!data || data.length === 0) {
-      // Check if there are any results without the join
-      const { data: checkData, error: checkError } = await supabase
-        .from('screening_results')
-        .select('*')
-        .eq('doctor_id', doctorId);
-      
-      console.log("Checking if any results exist without join:", checkData);
-      
-      if (checkError) {
-        console.error('Error checking for results:', checkError);
-      } else if (checkData && checkData.length > 0) {
-        console.log("Found results without join, but no patient data available");
-      }
     }
 
     // Cast all results to the correct type
