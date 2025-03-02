@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
 
+import Index from './pages/Index';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import PatientRegistration from './pages/PatientRegistration';
@@ -18,7 +19,8 @@ const router = createBrowserRouter([
     path: '/',
     element: <App />,
     children: [
-      { index: true, element: <Login /> },
+      { index: true, element: <Index /> },
+      { path: 'login', element: <Login /> },
       { path: 'patient-registration', element: <PatientRegistration /> },
       { path: 'camera', element: <Camera /> },
       { path: 'feedback', element: <Feedback /> },
