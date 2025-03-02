@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FormField from '@/components/FormField';
+import { useToast } from '@/components/ui/use-toast';
 
 const Login = () => {
   // Login state
@@ -27,9 +28,18 @@ const Login = () => {
     confirmPassword: '' 
   });
   
-  const { login, register, isLoading } = useAuth();
+  const { login, register, isLoading, isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("login");
+  const { toast } = useToast();
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (isAuthenticated && currentDoctor) {
+      console.log("User already authenticated, redirecting to patient registration");
+      navigate('/patient-registration');
+    }
+  }, [isAuthenticated, currentDoctor, navigate]);
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
@@ -98,10 +108,18 @@ const Login = () => {
       return;
     }
     
+    console.log("Attempting login with email:", loginEmail);
     const success = await login(loginEmail, loginPassword);
     
     if (success) {
+      console.log("Login successful, redirecting to patient registration");
+      toast({
+        title: "Login successful",
+        description: "You have been logged in successfully",
+      });
       navigate('/patient-registration');
+    } else {
+      console.log("Login failed");
     }
   };
 
@@ -112,10 +130,18 @@ const Login = () => {
       return;
     }
     
+    console.log("Attempting registration with email:", regEmail, "and name:", regName);
     const success = await register(regEmail, regPassword, regName);
     
     if (success) {
+      console.log("Registration successful, redirecting to patient registration");
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created successfully",
+      });
       navigate('/patient-registration');
+    } else {
+      console.log("Registration failed");
     }
   };
 

@@ -44,6 +44,7 @@ export const ensurePatientExists = async (
 ): Promise<string> => {
   try {
     console.log("Ensuring patient exists with data:", JSON.stringify(patientData, null, 2));
+    console.log("Doctor ID:", doctorId);
     
     // Validate patientData
     if (!patientData) {
