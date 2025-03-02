@@ -14,7 +14,7 @@ const BottomMenu = () => {
   const isResultsActive = location.pathname === '/results';
   
   return (
-    <div className="fixed bottom-0 left-0 right-0 py-2 px-4 bg-white border-t border-border shadow-sm z-20">
+    <div className="fixed bottom-0 left-0 right-0 py-2 px-4 bg-white border-t border-border shadow-sm z-30">
       <div className="max-w-screen-md mx-auto flex justify-around">
         <Button
           variant="ghost"
