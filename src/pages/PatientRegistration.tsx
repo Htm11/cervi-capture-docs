@@ -85,7 +85,7 @@ const physicalActivityOptions = [
 ];
 
 const PatientRegistration = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -237,7 +237,7 @@ const PatientRegistration = () => {
   };
 
   const handleCreatePatient = async () => {
-    if (!user?.id) {
+    if (!currentDoctor?.id) {
       toast({
         title: "Authentication Error",
         description: "You must be logged in to create a patient.",
@@ -250,7 +250,7 @@ const PatientRegistration = () => {
       setIsSubmitting(true);
       
       const newPatient = {
-        doctor_id: user.id,
+        doctor_id: currentDoctor.id,
         first_name: patientData.firstName,
         last_name: patientData.lastName,
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
