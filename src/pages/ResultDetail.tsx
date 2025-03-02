@@ -11,6 +11,26 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScreeningResult } from '@/services/screeningService';
 import { supabase } from '@/lib/supabase';
 
+// Define interface for medical history data structure
+interface MedicalHistoryData {
+  sociodemographic?: {
+    education?: string;
+    occupation?: string;
+    maritalStatus?: string;
+  };
+  lifestyle?: {
+    smoking?: string;
+    alcohol?: string;
+    physicalActivity?: string;
+  };
+  medical?: {
+    conditions?: string[] | string;
+    symptoms?: string[] | string;
+    reproductiveHistory?: string;
+    lastVisaExamResults?: string;
+  };
+}
+
 const ResultDetail = () => {
   const { resultId } = useParams();
   const navigate = useNavigate();
@@ -54,7 +74,7 @@ const ResultDetail = () => {
             // Try to parse if it's a string
             if (typeof data.patients.medical_history === 'string') {
               try {
-                const parsed = JSON.parse(data.patients.medical_history);
+                const parsed = JSON.parse(data.patients.medical_history) as MedicalHistoryData;
                 console.log('Medical history parsed:', parsed);
                 
                 if (parsed.medical && parsed.medical.conditions) {
@@ -69,18 +89,19 @@ const ResultDetail = () => {
               }
             } else {
               // It's already an object
-              console.log('Medical history (object):', data.patients.medical_history);
+              const medicalHistory = data.patients.medical_history as MedicalHistoryData;
+              console.log('Medical history (object):', medicalHistory);
               
-              if (data.patients.medical_history.medical && 
-                  data.patients.medical_history.medical.conditions) {
+              if (medicalHistory.medical && 
+                  medicalHistory.medical.conditions) {
                 console.log('Medical conditions:', 
-                  data.patients.medical_history.medical.conditions);
+                  medicalHistory.medical.conditions);
               }
               
-              if (data.patients.medical_history.medical && 
-                  data.patients.medical_history.medical.symptoms) {
+              if (medicalHistory.medical && 
+                  medicalHistory.medical.symptoms) {
                 console.log('Symptoms:', 
-                  data.patients.medical_history.medical.symptoms);
+                  medicalHistory.medical.symptoms);
               }
             }
           }
@@ -152,9 +173,18 @@ const ResultDetail = () => {
     if (!medicalHistoryData) return null;
     
     try {
-      const medicalHistory = typeof medicalHistoryData === 'string' 
-        ? JSON.parse(medicalHistoryData) 
-        : medicalHistoryData;
+      let medicalHistory: MedicalHistoryData;
+      
+      if (typeof medicalHistoryData === 'string') {
+        try {
+          medicalHistory = JSON.parse(medicalHistoryData) as MedicalHistoryData;
+        } catch (e) {
+          console.error('Error parsing medical history:', e);
+          return <p className="text-red-500">Error parsing medical history</p>;
+        }
+      } else {
+        medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
+      }
       
       console.log('Formatting medical history:', JSON.stringify(medicalHistory, null, 2));
       
