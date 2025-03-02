@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -249,6 +250,7 @@ const PatientRegistration = () => {
     try {
       setIsSubmitting(true);
       
+      // Create a comprehensive patient record with all the collected information
       const newPatient = {
         doctor_id: currentDoctor.id,
         first_name: patientData.firstName,
@@ -256,7 +258,18 @@ const PatientRegistration = () => {
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
         contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
         email: '',
-        medical_history: ''
+        medical_history: JSON.stringify({
+          conditions: patientData.existingConditions,
+          symptoms: patientData.commonSymptoms,
+          smoking: patientData.smokingStatus,
+          alcohol: patientData.alcoholUse,
+          physicalActivity: patientData.physicalActivity,
+          education: patientData.education,
+          occupation: patientData.occupation,
+          maritalStatus: patientData.maritalStatus,
+          reproductiveHistory: patientData.reproductiveHistory,
+          lastVisaExamResults: patientData.lastVisaExamResults
+        })
       };
       
       const createdPatient = await createPatient(newPatient);
@@ -284,13 +297,15 @@ const PatientRegistration = () => {
   const handleNext = async () => {
     if (validateStep(currentStep)) {
       if (currentStep === 1) {
+        // Just move to step 2 without creating the patient yet
+        setCurrentStep(2);
+      } else if (currentStep === 2) {
+        // Create the patient after collecting all medical information
         const patientId = await handleCreatePatient();
         if (!patientId) {
           return; // Don't proceed if patient creation failed
         }
         
-        setCurrentStep(2);
-      } else if (currentStep === 2) {
         const storageData = {
           ...patientData,
           id: createdPatientId,
