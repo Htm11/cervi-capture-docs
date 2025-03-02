@@ -275,8 +275,35 @@ const PatientRegistration = () => {
       const createdPatient = await createPatient(newPatient);
       
       if (createdPatient && createdPatient.id) {
+        console.log("Patient created successfully with ID:", createdPatient.id);
         setPatientCreated(true);
         setCreatedPatientId(createdPatient.id);
+        
+        // Store the full patient object with the ID in localStorage
+        const storageData = {
+          id: createdPatient.id,
+          firstName: patientData.firstName,
+          lastName: patientData.lastName,
+          dateOfBirth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
+          screeningStep: 'before-acetic',
+          
+          // Include additional fields that might be needed later
+          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
+          medicalHistory: {
+            conditions: patientData.existingConditions,
+            symptoms: patientData.commonSymptoms,
+            smoking: patientData.smokingStatus,
+            alcohol: patientData.alcoholUse,
+            physicalActivity: patientData.physicalActivity,
+          },
+          reproductiveHistory: patientData.reproductiveHistory,
+          lastVisaExamResults: patientData.lastVisaExamResults
+        };
+        
+        localStorage.setItem('currentPatient', JSON.stringify(storageData));
+        console.log("Patient data saved to localStorage:", storageData);
+        
         return createdPatient.id;
       } else {
         throw new Error('Failed to create patient');
@@ -306,19 +333,6 @@ const PatientRegistration = () => {
           return; // Don't proceed if patient creation failed
         }
         
-        const storageData = {
-          ...patientData,
-          id: createdPatientId,
-          screeningStep: 'before-acetic',
-          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-          
-          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-          medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
-          lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
-          symptoms: patientData.commonSymptoms.join(', ')
-        };
-        
-        localStorage.setItem('currentPatient', JSON.stringify(storageData));
         navigate('/camera');
       } else {
         setCurrentStep(prev => prev + 1);

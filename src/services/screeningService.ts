@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
@@ -42,6 +41,13 @@ export const uploadScreeningImage = async (
       return null;
     }
 
+    // Check if patientId is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(patientId)) {
+      console.error('Invalid patient ID format:', patientId);
+      return null;
+    }
+
     // Convert base64 to blob
     let base64Data = imageBase64;
     
@@ -61,7 +67,7 @@ export const uploadScreeningImage = async (
     const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
     const file = new File([blob], fileName, { type: 'image/jpeg' });
     
-    console.log(`Uploading ${imageType} image, size: ${file.size} bytes`);
+    console.log(`Uploading ${imageType} image, size: ${file.size} bytes, patient ID: ${patientId}`);
     
     // Upload to Supabase storage
     const { data, error } = await supabase
@@ -95,29 +101,40 @@ export const ensurePatientExists = async (
   doctorId: string
 ): Promise<string> => {
   try {
-    // First check if this is a real patient ID already in the database
+    console.log("Ensuring patient exists with data:", JSON.stringify(patientData, null, 2));
+    
+    // Check if this is a real patient ID already in the database
     if (patientData.id && patientData.id !== 'temp-patient-id') {
+      console.log("Checking for existing patient with ID:", patientData.id);
       const existingPatient = await getPatient(patientData.id);
       if (existingPatient) {
+        console.log("Found existing patient:", existingPatient);
         return patientData.id;
+      } else {
+        console.log("Patient ID provided but not found in database:", patientData.id);
       }
+    } else {
+      console.log("No valid patient ID provided, need to create a new patient");
     }
     
     // If we reach here, we need to create a real patient
     const newPatient = {
       doctor_id: doctorId,
-      first_name: patientData.firstName || 'Unknown',
-      last_name: patientData.lastName || 'Patient',
+      first_name: patientData.firstName || patientData.first_name || 'Unknown',
+      last_name: patientData.lastName || patientData.last_name || 'Patient',
       date_of_birth: patientData.dateOfBirth instanceof Date 
         ? patientData.dateOfBirth.toISOString().split('T')[0] 
         : (typeof patientData.dateOfBirth === 'string' 
             ? patientData.dateOfBirth 
-            : new Date().toISOString().split('T')[0]),
-      contact_number: patientData.phoneNumber || null,
+            : (patientData.date_of_birth || new Date().toISOString().split('T')[0])),
+      contact_number: patientData.phoneNumber || patientData.contact_number || null,
       email: patientData.email || null,
-      medical_history: patientData.medicalHistory || null
+      medical_history: typeof patientData.medicalHistory === 'object' 
+        ? JSON.stringify(patientData.medicalHistory) 
+        : (patientData.medicalHistory || patientData.medical_history || null)
     };
     
+    console.log("Creating new patient with data:", newPatient);
     const createdPatient = await createPatient(newPatient);
     if (createdPatient && createdPatient.id) {
       console.log('Created new patient with ID:', createdPatient.id);
@@ -142,6 +159,24 @@ export const saveScreeningResult = async (
       return null;
     }
 
+    // Validate required fields
+    if (!result.patient_id) {
+      console.error('Missing patient_id in screening result:', result);
+      throw new Error('Missing patient information. Please register the patient again.');
+    }
+
+    if (!doctor || !doctor.id) {
+      console.error('Missing doctor information:', doctor);
+      throw new Error('Missing doctor information. Please log in again.');
+    }
+
+    console.log('Saving screening result with data:', { 
+      patient_id: result.patient_id, 
+      doctor_id: doctor.id,
+      result: result.result,
+      confidence: result.confidence 
+    });
+
     // Ensure doctor_id is set to the current doctor
     const resultWithDoctor = {
       ...result,
@@ -159,6 +194,8 @@ export const saveScreeningResult = async (
       throw error;
     }
 
+    console.log('Screening result saved successfully:', data);
+
     // Ensure the result is cast to the correct type
     return {
       ...data,
@@ -166,7 +203,7 @@ export const saveScreeningResult = async (
     } as ScreeningResult;
   } catch (error) {
     console.error('Error in saveScreeningResult:', error);
-    return null;
+    throw error;
   }
 };
 
