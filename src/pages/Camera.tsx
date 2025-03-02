@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -8,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import CameraView from '@/components/camera/CameraView';
 import ImagePreview from '@/components/camera/ImagePreview';
+import { uploadImage, updatePatient } from '@/services/patientService';
 import {
   AlertDialog,
   AlertDialogAction,

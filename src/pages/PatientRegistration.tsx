@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Stepper, { Step } from '@/components/Stepper';
+import { createPatient } from '@/services/patientService';
+import { Patient } from '@/types/patient';
 import { 
   Select,
   SelectContent,
@@ -249,7 +251,7 @@ const PatientRegistration = () => {
         setIsSubmitting(true);
         
         try {
-          const patientData: Patient = {
+          const patientToCreate: Patient = {
             firstName: patientData.firstName,
             lastName: patientData.lastName,
             phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
@@ -268,7 +270,7 @@ const PatientRegistration = () => {
             doctor_id: currentDoctor.id
           };
           
-          const { data: newPatient, error } = await createPatient(patientData);
+          const { data: newPatient, error } = await createPatient(patientToCreate);
           
           if (error || !newPatient) {
             throw new Error(error?.message || 'Failed to create patient');

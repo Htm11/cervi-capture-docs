@@ -7,6 +7,7 @@ import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import { saveScreeningResult, updatePatient } from '@/services/patientService';
+import { ScreeningResult } from '@/types/patient';
 
 const steps: Step[] = [
   { id: 1, label: "Basic Info" },
@@ -68,10 +69,10 @@ const Feedback = () => {
     
     const saveResult = async () => {
       try {
-        const screeningData = {
+        const screeningData: ScreeningResult = {
           patient_id: patient.id,
           doctor_id: currentDoctor.id,
-          analysisResult: result,
+          analysisResult: result as 'positive' | 'negative',
           analysisDate: new Date().toISOString(),
           beforeAceticImage: beforeAceticImage,
           afterAceticImage: afterAceticImage
