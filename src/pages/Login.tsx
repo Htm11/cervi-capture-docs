@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FormField from '@/components/FormField';
+import { initializeDatabaseSchema } from '@/services/patientService';
+import { useToast } from '@/components/ui/use-toast';
 
 const Login = () => {
   // Login state
@@ -30,6 +32,25 @@ const Login = () => {
   const { login, register, isLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("login");
+  const { toast } = useToast();
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  // Function to initialize database schema
+  const ensureDatabaseSetup = async () => {
+    setIsInitializing(true);
+    const success = await initializeDatabaseSchema();
+    setIsInitializing(false);
+    
+    if (!success) {
+      toast({
+        title: "Database Initialization Failed",
+        description: "There was an error setting up the database. Some features may not work correctly.",
+        variant: "destructive"
+      });
+    }
+    
+    return success;
+  };
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
@@ -101,6 +122,7 @@ const Login = () => {
     const success = await login(loginEmail, loginPassword);
     
     if (success) {
+      await ensureDatabaseSetup();
       navigate('/patient-registration');
     }
   };
@@ -115,6 +137,7 @@ const Login = () => {
     const success = await register(regEmail, regPassword, regName);
     
     if (success) {
+      await ensureDatabaseSetup();
       navigate('/patient-registration');
     }
   };
@@ -180,12 +203,12 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-pink-300 to-cervi-400 hover:from-pink-400 hover:to-cervi-500 text-white font-medium" 
-                    disabled={isLoading}
+                    disabled={isLoading || isInitializing}
                   >
-                    {isLoading ? (
+                    {isLoading || isInitializing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Logging in...
+                        {isInitializing ? "Setting up..." : "Logging in..."}
                       </>
                     ) : (
                       'Log in'
@@ -263,12 +286,12 @@ const Login = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-pink-300 to-cervi-400 hover:from-pink-400 hover:to-cervi-500 text-white font-medium" 
-                    disabled={isLoading}
+                    disabled={isLoading || isInitializing}
                   >
-                    {isLoading ? (
+                    {isLoading || isInitializing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
+                        {isInitializing ? "Setting up..." : "Creating account..."}
                       </>
                     ) : (
                       'Create account'

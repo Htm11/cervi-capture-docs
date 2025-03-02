@@ -1,6 +1,112 @@
 import { supabase } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
 
+// Function to initialize database schema if needed
+export const initializeDatabaseSchema = async (): Promise<boolean> => {
+  try {
+    console.log("Checking and initializing database schema...");
+    
+    // Check if 'patients' table exists
+    const { error: patientsCheckError } = await supabase
+      .from('patients')
+      .select('id')
+      .limit(1);
+      
+    // Try to create patients table if it doesn't exist
+    if (patientsCheckError && patientsCheckError.code === '42P01') {
+      console.log("Creating patients table...");
+      
+      const createPatientsQuery = `
+        CREATE TABLE IF NOT EXISTS patients (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          firstName TEXT NOT NULL,
+          lastName TEXT NOT NULL,
+          phoneNumber TEXT NOT NULL,
+          dateOfBirth TIMESTAMP,
+          education TEXT,
+          occupation TEXT,
+          maritalStatus TEXT,
+          smokingStatus TEXT,
+          alcoholUse TEXT,
+          physicalActivity TEXT,
+          existingConditions TEXT[],
+          commonSymptoms TEXT[],
+          reproductiveHistory TEXT,
+          lastVisaExamResults TEXT,
+          screeningStep TEXT DEFAULT 'before-acetic',
+          doctor_id UUID NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
+      
+      const { error: createPatientsError } = await supabase.rpc('execute_sql', { 
+        query: createPatientsQuery 
+      });
+      
+      if (createPatientsError) {
+        console.error("Error creating patients table:", createPatientsError);
+        return false;
+      }
+    }
+    
+    // Check if 'screening_results' table exists
+    const { error: resultsCheckError } = await supabase
+      .from('screening_results')
+      .select('id')
+      .limit(1);
+      
+    // Try to create screening_results table if it doesn't exist
+    if (resultsCheckError && resultsCheckError.code === '42P01') {
+      console.log("Creating screening_results table...");
+      
+      const createResultsQuery = `
+        CREATE TABLE IF NOT EXISTS screening_results (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id UUID NOT NULL,
+          doctor_id UUID NOT NULL,
+          analysisResult TEXT NOT NULL CHECK (analysisResult IN ('positive', 'negative')),
+          analysisDate TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          beforeAceticImage TEXT,
+          afterAceticImage TEXT,
+          notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
+      
+      const { error: createResultsError } = await supabase.rpc('execute_sql', { 
+        query: createResultsQuery 
+      });
+      
+      if (createResultsError) {
+        console.error("Error creating screening_results table:", createResultsError);
+        return false;
+      }
+    }
+    
+    // Create storage bucket for cervical images if it doesn't exist
+    const { error: storageError } = await supabase.storage.getBucket('cervical_images');
+    
+    if (storageError && storageError.status === 404) {
+      console.log("Creating storage bucket for cervical images...");
+      const { error: createBucketError } = await supabase.storage.createBucket('cervical_images', {
+        public: true
+      });
+      
+      if (createBucketError) {
+        console.error("Error creating storage bucket:", createBucketError);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error initializing database schema:", error);
+    return false;
+  }
+};
+
 // Patient CRUD operations
 export const createPatient = async (patientData: Patient): Promise<{ data: Patient | null, error: any }> => {
   try {
@@ -204,52 +310,6 @@ export const uploadImage = async (
   } catch (error) {
     console.error('Error uploading image:', error);
     return { url: null, error };
-  }
-};
-
-// Function to initialize database schema if needed
-export const initializeDatabaseSchema = async (): Promise<boolean> => {
-  try {
-    console.log("Checking and initializing database schema...");
-    
-    // Check if 'patients' table exists
-    const { error: patientsCheckError } = await supabase
-      .from('patients')
-      .select('id')
-      .limit(1);
-      
-    // Try to create patients table if it doesn't exist
-    if (patientsCheckError && patientsCheckError.code === '42P01') {
-      console.log("Creating patients table...");
-      const { error: createPatientsError } = await supabase.rpc('create_patients_table');
-      
-      if (createPatientsError) {
-        console.error("Error creating patients table:", createPatientsError);
-        return false;
-      }
-    }
-    
-    // Check if 'screening_results' table exists
-    const { error: resultsCheckError } = await supabase
-      .from('screening_results')
-      .select('id')
-      .limit(1);
-      
-    // Try to create screening_results table if it doesn't exist
-    if (resultsCheckError && resultsCheckError.code === '42P01') {
-      console.log("Creating screening_results table...");
-      const { error: createResultsError } = await supabase.rpc('create_screening_results_table');
-      
-      if (createResultsError) {
-        console.error("Error creating screening_results table:", createResultsError);
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error initializing database schema:", error);
-    return false;
   }
 };
 
