@@ -10,7 +10,7 @@ export interface Patient {
   date_of_birth: string;
   contact_number?: string;
   email?: string;
-  medical_history?: string;
+  medical_history?: any; // Changed from string to any to support JSON
 }
 
 export const getPatients = async (): Promise<Patient[]> => {
@@ -90,6 +90,16 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
       patient.date_of_birth = new Date().toISOString().split('T')[0];
     }
 
+    // Ensure medical_history is a valid JSON object if it exists
+    if (patient.medical_history && typeof patient.medical_history === 'string') {
+      try {
+        patient.medical_history = JSON.parse(patient.medical_history);
+      } catch (e) {
+        console.warn('Could not parse medical_history as JSON, saving as object with text property');
+        patient.medical_history = { text: patient.medical_history };
+      }
+    }
+
     const { data, error } = await supabase
       .from('patients')
       .insert(patient)
@@ -123,6 +133,16 @@ export const updatePatient = async (patientId: string, updates: Partial<Patient>
     if (!supabase) {
       console.error('Supabase client is not initialized');
       return null;
+    }
+
+    // Ensure medical_history is a valid JSON object if it exists
+    if (updates.medical_history && typeof updates.medical_history === 'string') {
+      try {
+        updates.medical_history = JSON.parse(updates.medical_history);
+      } catch (e) {
+        console.warn('Could not parse medical_history as JSON, saving as object with text property');
+        updates.medical_history = { text: updates.medical_history };
+      }
     }
 
     const { data, error } = await supabase

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -249,6 +250,26 @@ const PatientRegistration = () => {
     try {
       setIsSubmitting(true);
       
+      // Structure medical history as a JSON object
+      const medicalHistoryJSON = {
+        sociodemographic: {
+          education: patientData.education,
+          occupation: patientData.occupation,
+          maritalStatus: patientData.maritalStatus
+        },
+        lifestyle: {
+          smoking: patientData.smokingStatus,
+          alcohol: patientData.alcoholUse,
+          physicalActivity: patientData.physicalActivity
+        },
+        medical: {
+          conditions: patientData.existingConditions,
+          symptoms: patientData.commonSymptoms,
+          reproductiveHistory: patientData.reproductiveHistory,
+          lastVisaExamResults: patientData.lastVisaExamResults
+        }
+      };
+      
       const newPatient = {
         doctor_id: currentDoctor.id,
         first_name: patientData.firstName,
@@ -256,7 +277,7 @@ const PatientRegistration = () => {
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
         contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
         email: '',
-        medical_history: ''
+        medical_history: medicalHistoryJSON
       };
       
       const createdPatient = await createPatient(newPatient);
@@ -291,16 +312,32 @@ const PatientRegistration = () => {
         
         setCurrentStep(2);
       } else if (currentStep === 2) {
+        // Add the structured medical history to localStorage too
+        const medicalHistoryJSON = {
+          sociodemographic: {
+            education: patientData.education,
+            occupation: patientData.occupation,
+            maritalStatus: patientData.maritalStatus
+          },
+          lifestyle: {
+            smoking: patientData.smokingStatus,
+            alcohol: patientData.alcoholUse,
+            physicalActivity: patientData.physicalActivity
+          },
+          medical: {
+            conditions: patientData.existingConditions,
+            symptoms: patientData.commonSymptoms,
+            reproductiveHistory: patientData.reproductiveHistory,
+            lastVisaExamResults: patientData.lastVisaExamResults
+          }
+        };
+        
         const storageData = {
           ...patientData,
           id: createdPatientId,
           screeningStep: 'before-acetic',
           phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-          
-          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-          medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
-          lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
-          symptoms: patientData.commonSymptoms.join(', ')
+          medicalHistory: medicalHistoryJSON
         };
         
         localStorage.setItem('currentPatient', JSON.stringify(storageData));
