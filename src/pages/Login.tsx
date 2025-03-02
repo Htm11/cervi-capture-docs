@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import FormField from '@/components/FormField';
 
 const Login = () => {
   // Login state
@@ -27,9 +26,15 @@ const Login = () => {
     confirmPassword: '' 
   });
   
-  const { login, register, isLoading } = useAuth();
+  const { login, register, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("login");
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/patient-registration');
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
