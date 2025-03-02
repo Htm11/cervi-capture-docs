@@ -7,15 +7,27 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 // Create a function to check if Supabase credentials are valid
 export const hasValidSupabaseCredentials = () => {
-  return supabaseUrl && supabaseAnonKey;
+  return !!supabaseUrl && !!supabaseAnonKey && supabaseUrl.includes('supabase.co');
 };
 
 // Initialize Supabase client
 let supabase;
-if (hasValidSupabaseCredentials()) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
-} else {
-  console.warn('Supabase credentials not found or incomplete. Using mock authentication.');
+
+try {
+  if (hasValidSupabaseCredentials()) {
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('Supabase client initialized successfully');
+  } else {
+    console.warn('Valid Supabase credentials not found. Some features may be unavailable.');
+    
+    if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_AUTH === 'true') {
+      console.log('Using mock authentication in development mode');
+    } else {
+      console.warn('Set VITE_USE_MOCK_AUTH=true in .env to enable mock authentication in development');
+    }
+  }
+} catch (error) {
+  console.error('Failed to initialize Supabase client:', error);
 }
 
 export { supabase };

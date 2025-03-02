@@ -2,9 +2,27 @@
 import { supabase, hasValidSupabaseCredentials } from '@/lib/supabase';
 import { Doctor } from '@/types/auth';
 
+// Check if we're in development and should use mock authentication
+const USE_MOCK_AUTH = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK_AUTH === 'true';
+
 // Login service function
 export const loginUser = async (email: string, password: string): Promise<{ success: boolean; doctor?: Doctor; error?: string }> => {
   try {
+    // If mock auth is explicitly enabled, use it
+    if (USE_MOCK_AUTH) {
+      console.log('Using mock login as requested in development environment');
+      const mockDoctor: Doctor = {
+        id: '123456',
+        name: 'Dr. ' + email.split('@')[0],
+        email: email
+      };
+      
+      return {
+        success: true,
+        doctor: mockDoctor
+      };
+    }
+
     // Try to login with Supabase if credentials are available
     if (hasValidSupabaseCredentials() && supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -14,22 +32,6 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
 
       if (error) {
         console.error('Supabase login error:', error);
-        
-        // If we're in development mode, allow mock login for testing
-        if (import.meta.env.DEV) {
-          console.log('Using mock login for development');
-          const mockDoctor: Doctor = {
-            id: '123456',
-            name: 'Dr. ' + email.split('@')[0],
-            email: email
-          };
-          
-          return {
-            success: true,
-            doctor: mockDoctor
-          };
-        }
-        
         return {
           success: false,
           error: error.message
@@ -55,37 +57,14 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
         error: 'No user data returned'
       };
     } else {
-      // Fallback for when Supabase is not available
-      console.log('Supabase not available, using mock login');
-      const mockDoctor: Doctor = {
-        id: '123456',
-        name: 'Dr. ' + email.split('@')[0],
-        email: email
-      };
-      
+      // No valid Supabase connection and mock auth is not enabled
       return {
-        success: true,
-        doctor: mockDoctor
+        success: false,
+        error: 'Authentication service unavailable'
       };
     }
   } catch (error) {
     console.error('Login error:', error);
-    
-    // Fallback for development
-    if (import.meta.env.DEV) {
-      console.log('Using mock login for development due to error');
-      const mockDoctor: Doctor = {
-        id: '123456',
-        name: 'Dr. ' + email.split('@')[0],
-        email: email
-      };
-      
-      return {
-        success: true,
-        doctor: mockDoctor
-      };
-    }
-    
     return {
       success: false,
       error: 'An error occurred during login'
@@ -96,6 +75,21 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
 // Register service function
 export const registerUser = async (email: string, password: string, name: string): Promise<{ success: boolean; doctor?: Doctor; error?: string }> => {
   try {
+    // If mock auth is explicitly enabled, use it
+    if (USE_MOCK_AUTH) {
+      console.log('Using mock registration as requested in development environment');
+      const mockDoctor: Doctor = {
+        id: '123456',
+        name: name || 'Dr. ' + email.split('@')[0],
+        email: email
+      };
+      
+      return {
+        success: true,
+        doctor: mockDoctor
+      };
+    }
+
     // Try to register with Supabase if credentials are available
     if (hasValidSupabaseCredentials() && supabase) {
       const { data, error } = await supabase.auth.signUp({
@@ -151,37 +145,14 @@ export const registerUser = async (email: string, password: string, name: string
         error: 'No user data returned'
       };
     } else {
-      // Fallback for when Supabase is not available
-      console.log('Supabase not available, using mock registration');
-      const mockDoctor: Doctor = {
-        id: '123456',
-        name: name || 'Dr. ' + email.split('@')[0],
-        email: email
-      };
-      
+      // No valid Supabase connection and mock auth is not enabled
       return {
-        success: true,
-        doctor: mockDoctor
+        success: false,
+        error: 'Authentication service unavailable'
       };
     }
   } catch (error) {
     console.error('Registration error:', error);
-    
-    // Fallback for development
-    if (import.meta.env.DEV) {
-      console.log('Using mock registration for development due to error');
-      const mockDoctor: Doctor = {
-        id: '123456',
-        name: name || 'Dr. ' + email.split('@')[0],
-        email: email
-      };
-      
-      return {
-        success: true,
-        doctor: mockDoctor
-      };
-    }
-    
     return {
       success: false,
       error: 'An error occurred during registration'
@@ -203,6 +174,20 @@ export const logoutUser = async (): Promise<void> => {
 // Session check service function
 export const checkSession = async (): Promise<Doctor | null> => {
   try {
+    // If mock auth is explicitly enabled and we have a saved session, use it
+    if (USE_MOCK_AUTH) {
+      const savedDoctor = localStorage.getItem('cerviDoctor');
+      if (savedDoctor) {
+        try {
+          return JSON.parse(savedDoctor);
+        } catch (error) {
+          console.error('Failed to parse saved doctor', error);
+          localStorage.removeItem('cerviDoctor');
+        }
+      }
+      return null;
+    }
+    
     // Try to get the session from Supabase if credentials are available
     if (hasValidSupabaseCredentials() && supabase) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -220,32 +205,9 @@ export const checkSession = async (): Promise<Doctor | null> => {
       }
     }
     
-    // Try fallback to local storage if no active session or Supabase not available
-    const savedDoctor = localStorage.getItem('cerviDoctor');
-    if (savedDoctor) {
-      try {
-        return JSON.parse(savedDoctor);
-      } catch (error) {
-        console.error('Failed to parse saved doctor', error);
-        localStorage.removeItem('cerviDoctor');
-      }
-    }
-    
     return null;
   } catch (error) {
     console.error('Error checking session:', error);
-    
-    // Fallback to localStorage
-    const savedDoctor = localStorage.getItem('cerviDoctor');
-    if (savedDoctor) {
-      try {
-        return JSON.parse(savedDoctor);
-      } catch (error) {
-        console.error('Failed to parse saved doctor', error);
-        localStorage.removeItem('cerviDoctor');
-      }
-    }
-    
     return null;
   }
 };
