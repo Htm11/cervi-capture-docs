@@ -16,6 +16,8 @@ interface PatientResult {
   dateOfBirth?: string;
   analysisResult: 'positive' | 'negative';
   analysisDate: string;
+  beforeAceticImage?: string;
+  afterAceticImage?: string;
 }
 
 const Results = () => {
