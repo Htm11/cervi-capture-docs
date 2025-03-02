@@ -93,6 +93,11 @@ const Feedback = () => {
     // Hide animation after delay
     const timer = setTimeout(() => {
       setShowAnimation(false);
+      
+      // Automatically save to database after analysis animation completes
+      if (currentDoctor && patientDataString && beforeAceticImage && afterAceticImage && result) {
+        saveToDatabase();
+      }
     }, 2500);
     
     return () => clearTimeout(timer);
@@ -106,6 +111,11 @@ const Feedback = () => {
         description: "Missing required data for saving the result",
         variant: "destructive",
       });
+      return;
+    }
+    
+    if (resultSaved) {
+      // Already saved, no need to save again
       return;
     }
     
@@ -281,20 +291,17 @@ const Feedback = () => {
                 
                 {/* Database Save Status */}
                 <div className="mt-4">
-                  {!resultSaved ? (
-                    <Button 
-                      onClick={saveToDatabase} 
-                      disabled={isSaving || !currentDoctor}
-                      className="w-full bg-cervi-500 hover:bg-cervi-600 text-white"
-                    >
-                      {isSaving ? 'Saving to Database...' : 'Save Result to Database'}
-                    </Button>
-                  ) : (
+                  {isSaving ? (
+                    <div className="flex items-center space-x-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-sm text-blue-700">Saving result to database...</p>
+                    </div>
+                  ) : resultSaved ? (
                     <div className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg border border-green-100">
                       <CheckCircle className="h-5 w-5 text-green-500" />
-                      <p className="text-sm text-green-700">Result saved successfully</p>
+                      <p className="text-sm text-green-700">Result saved to database</p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
               
