@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase, hasValidSupabaseCredentials } from '@/lib/supabase';
+import { supabase, hasValidSupabaseCredentials, checkSupabaseEnv } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
 interface Doctor {
@@ -29,6 +29,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state
   useEffect(() => {
+    // Check and log Supabase environment status
+    const envStatus = checkSupabaseEnv();
+    console.log('Authentication mode:', envStatus ? 'Real Supabase auth' : 'Mock authentication');
+    
     const initAuth = async () => {
       setIsLoading(true);
       

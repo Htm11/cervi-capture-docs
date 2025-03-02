@@ -6,14 +6,14 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, Mail, Lock, Info } from 'lucide-react';
+import { Loader2, User, Mail, Lock, Info, AlertTriangle } from 'lucide-react';
 import { 
   Tabs, 
   TabsContent, 
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
-import { hasValidSupabaseCredentials } from '@/lib/supabase';
+import { hasValidSupabaseCredentials, checkSupabaseEnv } from '@/lib/supabase';
 
 const Login = () => {
   // Login form state
@@ -40,8 +40,9 @@ const Login = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Check if we're in development mode
-    setIsDevelopmentMode(!hasValidSupabaseCredentials());
+    // Check if we're in development mode and log environment status
+    const envStatus = checkSupabaseEnv();
+    setIsDevelopmentMode(!envStatus);
     
     // If already authenticated, redirect to patient registration
     if (isAuthenticated) {
@@ -158,10 +159,15 @@ const Login = () => {
 
           {isDevelopmentMode && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
-              <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-amber-800">
-                <p className="font-medium">Development Mode</p>
-                <p>Supabase credentials not detected. Using mock authentication. Any email/password will work.</p>
+                <p className="font-medium">Supabase Environment Variables Missing</p>
+                <p>To set up real authentication, you need to add the following environment variables to your Lovable project settings:</p>
+                <ul className="list-disc list-inside mt-1">
+                  <li>VITE_SUPABASE_URL</li>
+                  <li>VITE_SUPABASE_ANON_KEY</li>
+                </ul>
+                <p className="mt-1">Until then, mock authentication is enabled (any email/password will work).</p>
               </div>
             </div>
           )}
