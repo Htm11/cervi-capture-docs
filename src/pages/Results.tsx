@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Results = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<ScreeningResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,9 +38,9 @@ const Results = () => {
       setIsLoading(true);
       
       try {
-        if (user?.id) {
+        if (currentDoctor?.id) {
           // Fetch results from the database
-          const doctorResults = await getDoctorScreeningResults(user.id);
+          const doctorResults = await getDoctorScreeningResults(currentDoctor.id);
           console.log('Loaded results from database:', doctorResults);
           setResults(doctorResults);
         }
@@ -58,9 +57,8 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [isAuthenticated, navigate, user, toast]);
+  }, [isAuthenticated, navigate, currentDoctor, toast]);
   
-  // Filter results based on search term
   const filteredResults = results.filter(result => {
     if (!result.patients) return false;
     
@@ -251,3 +249,22 @@ const Results = () => {
 };
 
 export default Results;
+
+export const saveResultToHistory = (patientData: any) => {
+  try {
+    // Save to local storage history
+    const existingHistoryStr = localStorage.getItem('resultsHistory');
+    const existingHistory = existingHistoryStr ? JSON.parse(existingHistoryStr) : [];
+    
+    // Add the new result
+    const updatedHistory = [patientData, ...existingHistory];
+    
+    // Save back to local storage
+    localStorage.setItem('resultsHistory', JSON.stringify(updatedHistory));
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving result to history:', error);
+    return false;
+  }
+};
