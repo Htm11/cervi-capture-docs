@@ -118,6 +118,7 @@ const ResultDetail = () => {
         ? JSON.parse(medicalHistoryData) 
         : medicalHistoryData;
       
+      // Helper function to render nested values recursively
       const renderNestedValue = (value: any): React.ReactNode => {
         if (value === null || value === undefined) {
           return "None";
@@ -132,13 +133,14 @@ const ResultDetail = () => {
                   return null;
                 }
                 
+                const displayKey = nestedKey.replace(/_/g, ' ');
                 const displayValue = typeof nestedValue === 'boolean'
                   ? (nestedValue ? 'Yes' : 'No')
                   : nestedValue;
                 
                 return (
-                  <div key={nestedKey} className="flex justify-between items-start">
-                    <span className="text-muted-foreground capitalize">{nestedKey.replace(/_/g, ' ')}</span>
+                  <div key={nestedKey} className="flex justify-between items-start mb-1">
+                    <span className="text-muted-foreground capitalize">{displayKey}</span>
                     <span className="font-medium text-right max-w-[60%]">
                       {typeof displayValue === 'object' ? renderNestedValue(displayValue) : String(displayValue)}
                     </span>
@@ -155,48 +157,270 @@ const ResultDetail = () => {
       };
       
       return (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {Object.entries(medicalHistory).map(([sectionKey, sectionValue]) => {
-            if (!sectionValue) return null;
+            if (!sectionValue || (typeof sectionValue === 'object' && Object.keys(sectionValue).length === 0)) 
+              return null;
             
+            // Create a collapsible section for each main category
             return (
-              <div key={sectionKey} className="space-y-2">
-                <h3 className="text-sm font-semibold capitalize border-b pb-1">{sectionKey}</h3>
-                {typeof sectionValue === 'object' ? (
-                  <div className="space-y-3">
-                    {Object.entries(sectionValue as Record<string, any>).map(([key, value]) => {
+              <Collapsible key={sectionKey} className="border rounded-md overflow-hidden">
+                <CollapsibleTrigger className="flex justify-between items-center w-full p-3 bg-muted/30 hover:bg-muted/50 transition-all">
+                  <span className="font-medium capitalize">{sectionKey.replace(/_/g, ' ')}</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform ui-open:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-3 space-y-2">
+                  {typeof sectionValue === 'object' ? (
+                    Object.entries(sectionValue as Record<string, any>).map(([key, value]) => {
+                      // Skip null, undefined, or empty arrays
                       if (value === null || value === undefined || 
                          (Array.isArray(value) && value.length === 0)) {
                         return null;
                       }
                       
+                      // For nested objects (like conditions in medical section)
+                      if (key === 'conditions' && typeof value === 'object') {
+                        return (
+                          <div key={key} className="space-y-2">
+                            <h4 className="text-sm font-medium capitalize">Medical Conditions</h4>
+                            <div className="space-y-1">
+                              {Object.entries(value as Record<string, any>).map(([conditionKey, conditionValue]) => {
+                                // Skip false/null conditions
+                                if (!conditionValue) return null;
+                                
+                                return (
+                                  <div key={conditionKey} className="flex justify-between items-center">
+                                    <span className="text-muted-foreground capitalize">{conditionKey.replace(/_/g, ' ')}</span>
+                                    <span className="font-medium">{typeof conditionValue === 'boolean' ? 'Yes' : String(conditionValue)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // For other nested objects
+                      if (typeof value === 'object' && !Array.isArray(value)) {
+                        return (
+                          <div key={key} className="space-y-1">
+                            <h4 className="text-sm font-medium capitalize">{key.replace(/_/g, ' ')}</h4>
+                            <div className="space-y-1">
+                              {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => {
+                                if (subValue === null || subValue === undefined) return null;
+                                
+                                return (
+                                  <div key={subKey} className="flex justify-between items-center">
+                                    <span className="text-muted-foreground capitalize">{subKey.replace(/_/g, ' ')}</span>
+                                    <span className="font-medium">{typeof subValue === 'boolean' ? (subValue ? 'Yes' : 'No') : String(subValue)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // For simple key-value pairs
                       return (
-                        <div key={key} className="flex justify-between items-start">
+                        <div key={key} className="flex justify-between items-center">
                           <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                          <span className="font-medium text-right max-w-[60%]">
-                            {typeof value === 'object' ? renderNestedValue(value) : 
-                              typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
+                          <span className="font-medium">
+                            {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : 
+                             typeof value === 'object' ? renderNestedValue(value) : String(value)}
                           </span>
                         </div>
                       );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground capitalize">{sectionKey.replace(/_/g, ' ')}</span>
-                    <span className="font-medium">
-                      {typeof sectionValue === 'boolean' ? (sectionValue ? 'Yes' : 'No') : String(sectionValue)}
-                    </span>
-                  </div>
-                )}
-              </div>
+                    })
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground capitalize">{sectionKey.replace(/_/g, ' ')}</span>
+                      <span className="font-medium">
+                        {typeof sectionValue === 'boolean' ? (sectionValue ? 'Yes' : 'No') : String(sectionValue)}
+                      </span>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
       );
     } catch (e) {
       console.error('Error formatting medical history:', e);
-      return <p>{medicalHistoryData}</p>;
+      return <p className="text-red-500">Error displaying medical history: {(e as Error).message}</p>;
+    }
+  };
+  
+  const goBack = () => {
+    navigate('/results');
+  };
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (!result) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-muted-foreground">Result not found</p>
+          <Button 
+            className="mt-4 bg-cervi-500 hover:bg-cervi-600 text-white"
+            onClick={goBack}
+          >
+            Go Back
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+  
+  const formatMedicalHistory = (medicalHistoryData: string | null) => {
+    if (!medicalHistoryData) return null;
+    
+    try {
+      const medicalHistory = typeof medicalHistoryData === 'string' 
+        ? JSON.parse(medicalHistoryData) 
+        : medicalHistoryData;
+      
+      // Helper function to render nested values recursively
+      const renderNestedValue = (value: any): React.ReactNode => {
+        if (value === null || value === undefined) {
+          return "None";
+        } else if (Array.isArray(value)) {
+          return value.length > 0 ? value.join(', ') : "None";
+        } else if (typeof value === 'object') {
+          return (
+            <div className="pl-4 space-y-2 mt-2 text-sm">
+              {Object.entries(value).map(([nestedKey, nestedValue]) => {
+                if (nestedValue === null || nestedValue === undefined || 
+                   (Array.isArray(nestedValue) && nestedValue.length === 0)) {
+                  return null;
+                }
+                
+                const displayKey = nestedKey.replace(/_/g, ' ');
+                const displayValue = typeof nestedValue === 'boolean'
+                  ? (nestedValue ? 'Yes' : 'No')
+                  : nestedValue;
+                
+                return (
+                  <div key={nestedKey} className="flex justify-between items-start mb-1">
+                    <span className="text-muted-foreground capitalize">{displayKey}</span>
+                    <span className="font-medium text-right max-w-[60%]">
+                      {typeof displayValue === 'object' ? renderNestedValue(displayValue) : String(displayValue)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        } else if (typeof value === 'boolean') {
+          return value ? 'Yes' : 'No';
+        } else {
+          return String(value);
+        }
+      };
+      
+      return (
+        <div className="space-y-4">
+          {Object.entries(medicalHistory).map(([sectionKey, sectionValue]) => {
+            if (!sectionValue || (typeof sectionValue === 'object' && Object.keys(sectionValue).length === 0)) 
+              return null;
+            
+            // Create a collapsible section for each main category
+            return (
+              <Collapsible key={sectionKey} className="border rounded-md overflow-hidden">
+                <CollapsibleTrigger className="flex justify-between items-center w-full p-3 bg-muted/30 hover:bg-muted/50 transition-all">
+                  <span className="font-medium capitalize">{sectionKey.replace(/_/g, ' ')}</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform ui-open:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="p-3 space-y-2">
+                  {typeof sectionValue === 'object' ? (
+                    Object.entries(sectionValue as Record<string, any>).map(([key, value]) => {
+                      // Skip null, undefined, or empty arrays
+                      if (value === null || value === undefined || 
+                         (Array.isArray(value) && value.length === 0)) {
+                        return null;
+                      }
+                      
+                      // For nested objects (like conditions in medical section)
+                      if (key === 'conditions' && typeof value === 'object') {
+                        return (
+                          <div key={key} className="space-y-2">
+                            <h4 className="text-sm font-medium capitalize">Medical Conditions</h4>
+                            <div className="space-y-1">
+                              {Object.entries(value as Record<string, any>).map(([conditionKey, conditionValue]) => {
+                                // Skip false/null conditions
+                                if (!conditionValue) return null;
+                                
+                                return (
+                                  <div key={conditionKey} className="flex justify-between items-center">
+                                    <span className="text-muted-foreground capitalize">{conditionKey.replace(/_/g, ' ')}</span>
+                                    <span className="font-medium">{typeof conditionValue === 'boolean' ? 'Yes' : String(conditionValue)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // For other nested objects
+                      if (typeof value === 'object' && !Array.isArray(value)) {
+                        return (
+                          <div key={key} className="space-y-1">
+                            <h4 className="text-sm font-medium capitalize">{key.replace(/_/g, ' ')}</h4>
+                            <div className="space-y-1">
+                              {Object.entries(value as Record<string, any>).map(([subKey, subValue]) => {
+                                if (subValue === null || subValue === undefined) return null;
+                                
+                                return (
+                                  <div key={subKey} className="flex justify-between items-center">
+                                    <span className="text-muted-foreground capitalize">{subKey.replace(/_/g, ' ')}</span>
+                                    <span className="font-medium">{typeof subValue === 'boolean' ? (subValue ? 'Yes' : 'No') : String(subValue)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // For simple key-value pairs
+                      return (
+                        <div key={key} className="flex justify-between items-center">
+                          <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                          <span className="font-medium">
+                            {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : 
+                             typeof value === 'object' ? renderNestedValue(value) : String(value)}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground capitalize">{sectionKey.replace(/_/g, ' ')}</span>
+                      <span className="font-medium">
+                        {typeof sectionValue === 'boolean' ? (sectionValue ? 'Yes' : 'No') : String(sectionValue)}
+                      </span>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </div>
+      );
+    } catch (e) {
+      console.error('Error formatting medical history:', e);
+      return <p className="text-red-500">Error displaying medical history: {(e as Error).message}</p>;
     }
   };
   
@@ -273,32 +497,17 @@ const ResultDetail = () => {
           </div>
           
           {/* Detailed Medical History - Collapsible Section */}
-          <Collapsible 
-            open={isPatientInfoOpen} 
-            onOpenChange={setIsPatientInfoOpen}
-            className="mb-6 border rounded-lg p-2"
-          >
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="flex w-full justify-between items-center p-2"
-              >
-                <span className="font-medium">Detailed Medical History</span>
-                {isPatientInfoOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="px-2 py-3">
-              {result.patients?.medical_history ? (
-                formatMedicalHistory(result.patients.medical_history)
-              ) : (
-                <p className="text-sm text-muted-foreground">No medical history available</p>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+          
+          
+          <div className="mt-6 mb-6">
+            <h2 className="text-md font-medium mb-3">Medical History</h2>
+            {result.patients?.medical_history ? (
+              formatMedicalHistory(result.patients.medical_history)
+            ) : (
+              <p className="text-sm text-muted-foreground">No medical history available</p>
+            )}
+          </div>
+          
           
           <h2 className="text-md font-medium mb-3">Screening Images</h2>
           <Tabs defaultValue="before-acetic">
