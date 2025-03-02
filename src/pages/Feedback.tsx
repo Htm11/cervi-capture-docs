@@ -59,7 +59,27 @@ const Feedback = () => {
     // Get patient data from local storage
     const patientDataString = localStorage.getItem('currentPatient');
     if (patientDataString) {
-      setPatientData(JSON.parse(patientDataString));
+      try {
+        const parsedData = JSON.parse(patientDataString);
+        console.log("Loaded patient data:", parsedData);
+        setPatientData(parsedData);
+      } catch (error) {
+        console.error("Error parsing patient data:", error);
+        toast({
+          title: "Data error",
+          description: "Could not load patient information",
+          variant: "destructive",
+        });
+      }
+    } else {
+      console.error("No patient data found in localStorage");
+      toast({
+        title: "Missing patient data",
+        description: "Please register a patient first",
+        variant: "destructive",
+      });
+      navigate('/patient-registration');
+      return;
     }
     
     // Simulate analysis result - in real app, this would come from an API
@@ -105,25 +125,70 @@ const Feedback = () => {
   
   // Save result to Supabase
   const saveToDatabase = async () => {
-    if (!currentDoctor || !patientData || !beforeImage || !afterImage || !analysisResult) {
+    if (!currentDoctor) {
+      console.error("Missing doctor information");
       toast({
         title: "Cannot save result",
-        description: "Missing required data for saving the result",
+        description: "Missing doctor information. Please log in again.",
         variant: "destructive",
       });
       return;
     }
     
+    if (!patientData) {
+      console.error("Missing patient data");
+      toast({
+        title: "Cannot save result",
+        description: "Missing patient information. Please register the patient again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!beforeImage || !afterImage) {
+      console.error("Missing images", { beforeImage, afterImage });
+      toast({
+        title: "Cannot save result",
+        description: "Missing images. Please capture images again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!analysisResult) {
+      console.error("Missing analysis result");
+      toast({
+        title: "Cannot save result",
+        description: "Missing analysis result. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if we already saved this result
     if (resultSaved) {
-      // Already saved, no need to save again
+      console.log("Result already saved, skipping");
       return;
     }
     
     setIsSaving(true);
     
     try {
+      console.log("Starting database save with data:", {
+        doctorId: currentDoctor.id,
+        patientData: patientData,
+        hasImages: !!beforeImage && !!afterImage,
+        analysisResult
+      });
+      
       // First ensure we have a valid patient ID
       const validPatientId = await ensurePatientExists(patientData, currentDoctor.id);
+      
+      if (!validPatientId) {
+        throw new Error("Failed to get a valid patient ID");
+      }
+      
+      console.log("Got valid patient ID:", validPatientId);
       
       // Then upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
@@ -140,6 +205,12 @@ const Feedback = () => {
         'after'
       );
       
+      if (!beforeImageUrl || !afterImageUrl) {
+        throw new Error("Failed to upload one or more images");
+      }
+      
+      console.log("Uploaded images:", { beforeImageUrl, afterImageUrl });
+      
       // Then save the screening result to the database
       const screeningResult = {
         patient_id: validPatientId,
@@ -150,6 +221,8 @@ const Feedback = () => {
         confidence: 0.85, // Mock confidence value
         notes: `Screening performed on ${new Date().toLocaleDateString()}`
       };
+      
+      console.log("Saving screening result:", screeningResult);
       
       const savedResult = await saveScreeningResult(screeningResult, currentDoctor);
       

@@ -32,13 +32,36 @@ export const uploadScreeningImage = async (
       return null;
     }
 
+    if (!imageBase64) {
+      console.error('No image data provided');
+      return null;
+    }
+
+    if (!doctorId || !patientId) {
+      console.error('Missing doctor or patient ID', { doctorId, patientId });
+      return null;
+    }
+
     // Convert base64 to blob
-    const base64Data = imageBase64.split(',')[1];
+    let base64Data = imageBase64;
+    
+    // Check if the base64 string contains the data URL prefix
+    if (base64Data.includes(',')) {
+      base64Data = imageBase64.split(',')[1];
+    }
+    
+    if (!base64Data) {
+      console.error('Invalid base64 data');
+      return null;
+    }
+
     const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
     
     // Create a file from the blob
     const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
     const file = new File([blob], fileName, { type: 'image/jpeg' });
+    
+    console.log(`Uploading ${imageType} image, size: ${file.size} bytes`);
     
     // Upload to Supabase storage
     const { data, error } = await supabase
@@ -50,6 +73,8 @@ export const uploadScreeningImage = async (
       console.error('Error uploading image:', error);
       throw error;
     }
+
+    console.log(`${imageType} image uploaded successfully:`, data);
 
     // Get the public URL
     const { data: urlData } = supabase
