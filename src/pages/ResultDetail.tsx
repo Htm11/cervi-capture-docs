@@ -45,6 +45,16 @@ const ResultDetail = () => {
         
         if (data) {
           console.log('Loaded result detail:', data);
+          
+          // Ensure the image URLs are properly formed
+          if (data.before_image_url) {
+            console.log('Before image URL:', data.before_image_url);
+          }
+          
+          if (data.after_image_url) {
+            console.log('After image URL:', data.after_image_url);
+          }
+          
           setResult(data as ScreeningResult);
         } else {
           toast({
@@ -186,7 +196,9 @@ const ResultDetail = () => {
                     className="w-full object-contain max-h-[300px]"
                     onError={(e) => {
                       console.error('Error loading before image:', e);
-                      e.currentTarget.src = '/placeholder.svg';
+                      const imgElement = e.currentTarget as HTMLImageElement;
+                      console.log('Failed image URL:', imgElement.src);
+                      imgElement.src = '/placeholder.svg';
                     }}
                   />
                 </div>
@@ -206,7 +218,9 @@ const ResultDetail = () => {
                     className="w-full object-contain max-h-[300px]"
                     onError={(e) => {
                       console.error('Error loading after image:', e);
-                      e.currentTarget.src = '/placeholder.svg';
+                      const imgElement = e.currentTarget as HTMLImageElement;
+                      console.log('Failed image URL:', imgElement.src);
+                      imgElement.src = '/placeholder.svg';
                     }}
                   />
                 </div>

@@ -23,6 +23,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
           src={imageUrl} 
           alt="Captured" 
           className="w-full h-full object-contain bg-black rounded-xl" 
+          onError={(e) => {
+            console.error('Error loading preview image:', e);
+            (e.target as HTMLImageElement).src = '/placeholder.svg';
+          }}
         />
         
         <div className="absolute bottom-4 left-0 right-0 px-4">

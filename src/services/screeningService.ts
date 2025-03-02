@@ -40,11 +40,13 @@ export const uploadScreeningImage = async (
     const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
     const file = new File([blob], fileName, { type: 'image/jpeg' });
     
+    console.log(`Uploading ${imageType} image for doctor ${doctorId}, patient ${patientId}`);
+    
     // Upload to Supabase storage
     const { data, error } = await supabase
       .storage
       .from('cervical_images')
-      .upload(fileName, file);
+      .upload(fileName, file, { upsert: true });
 
     if (error) {
       console.error('Error uploading image:', error);
@@ -57,6 +59,7 @@ export const uploadScreeningImage = async (
       .from('cervical_images')
       .getPublicUrl(data.path);
 
+    console.log(`Successfully uploaded ${imageType} image. Public URL:`, urlData.publicUrl);
     return urlData.publicUrl;
   } catch (error) {
     console.error('Error in uploadScreeningImage:', error);
@@ -122,6 +125,8 @@ export const saveScreeningResult = async (
       ...result,
       doctor_id: doctor.id
     };
+    
+    console.log('Saving screening result:', resultWithDoctor);
 
     const { data, error } = await supabase
       .from('screening_results')
@@ -133,6 +138,8 @@ export const saveScreeningResult = async (
       console.error('Error saving screening result:', error);
       throw error;
     }
+
+    console.log('Screening result saved successfully:', data);
 
     // Ensure the result is cast to the correct type
     return {
@@ -187,6 +194,8 @@ export const getDoctorScreeningResults = async (
       return [];
     }
 
+    console.log('Fetching screening results for doctor:', doctorId);
+
     const { data, error } = await supabase
       .from('screening_results')
       .select('*, patients!inner(*)')
@@ -197,6 +206,8 @@ export const getDoctorScreeningResults = async (
       console.error('Error fetching doctor screening results:', error);
       throw error;
     }
+
+    console.log('Loaded screening results:', data);
 
     // Cast all results to the correct type
     return (data || []).map(item => ({
