@@ -10,7 +10,7 @@ const BottomMenu = () => {
   const location = useLocation();
   
   // Determine which menu item is active
-  const isNewScanActive = location.pathname === '/camera' || location.pathname === '/feedback';
+  const isNewScanActive = location.pathname === '/patient-registration' || location.pathname === '/camera' || location.pathname === '/feedback';
   const isResultsActive = location.pathname === '/results';
   
   return (
