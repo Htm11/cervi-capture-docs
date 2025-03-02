@@ -10,11 +10,11 @@ const BottomMenu = () => {
   const location = useLocation();
   
   // Determine which menu item is active
-  const isNewScanActive = location.pathname === '/patient-registration' || location.pathname === '/camera' || location.pathname === '/feedback';
+  const isNewScanActive = location.pathname === '/camera' || location.pathname === '/feedback';
   const isResultsActive = location.pathname === '/results';
   
   return (
-    <div className="fixed bottom-0 left-0 right-0 py-2 px-4 bg-white border-t border-border shadow-sm z-10">
+    <div className="fixed bottom-0 left-0 right-0 py-2 px-4 bg-white border-t border-border shadow-sm z-20">
       <div className="max-w-screen-md mx-auto flex justify-around">
         <Button
           variant="ghost"

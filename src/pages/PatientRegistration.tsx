@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -846,10 +847,13 @@ const PatientRegistration = () => {
           className="mb-6"
         />
         
-        <form className="space-y-8">
+        <form className="space-y-8 mb-24"> {/* Added bottom margin to account for fixed buttons */}
           {renderStepContent()}
-          
-          <div className="py-4 flex space-x-3">
+        </form>
+        
+        {/* New sticky navigation buttons */}
+        <div className="fixed bottom-0 left-0 right-0 py-4 px-4 bg-white border-t border-border shadow-sm z-10">
+          <div className="max-w-screen-md mx-auto flex space-x-3">
             {currentStep > 1 && (
               <Button
                 type="button"
@@ -890,7 +894,7 @@ const PatientRegistration = () => {
               )}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
     </Layout>
   );

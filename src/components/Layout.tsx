@@ -23,8 +23,8 @@ const Layout = ({
   // Generate a unique key for page transitions based on the current route
   const pageKey = location.pathname;
   
-  // Hide bottom menu on login page
-  const shouldShowBottomMenu = !hideBottomMenu && location.pathname !== '/login';
+  // Hide bottom menu on login page or when we're on the patient registration page (since it has its own sticky nav)
+  const shouldShowBottomMenu = !hideBottomMenu && location.pathname !== '/login' && location.pathname !== '/patient-registration';
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
