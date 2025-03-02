@@ -85,23 +85,9 @@ const Results = () => {
   });
   
   const handleResultClick = (result: ScreeningResult) => {
-    const patient = {
-      id: result.patient_id,
-      firstName: result.patients?.first_name || '',
-      lastName: result.patients?.last_name || '',
-      phoneNumber: result.patients?.contact_number || '',
-      dateOfBirth: result.patients?.date_of_birth || '',
-      analysisResult: result.result,
-      analysisDate: result.created_at || '',
-      beforeAceticImage: result.before_image_url || '',
-      afterAceticImage: result.after_image_url || '',
-    };
-    
-    localStorage.setItem('currentPatient', JSON.stringify(patient));
-    localStorage.setItem('beforeAceticImage', patient.beforeAceticImage || '');
-    localStorage.setItem('afterAceticImage', patient.afterAceticImage || '');
-    
-    navigate('/feedback');
+    if (result.id) {
+      navigate(`/results/${result.id}`);
+    }
   };
   
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
