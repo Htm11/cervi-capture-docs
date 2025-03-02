@@ -3,10 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, XCircle, Calendar, Phone } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Calendar, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScreeningResult } from '@/services/screeningService';
 import { supabase } from '@/lib/supabase';
 
@@ -16,6 +17,7 @@ const ResultDetail = () => {
   const { toast } = useToast();
   const [result, setResult] = useState<ScreeningResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPatientInfoOpen, setIsPatientInfoOpen] = useState(false);
   
   useEffect(() => {
     const fetchResultDetail = async () => {
@@ -109,6 +111,29 @@ const ResultDetail = () => {
     );
   }
   
+  // Function to format medical history data for display
+  const formatMedicalHistory = (medicalHistoryText: string | null) => {
+    if (!medicalHistoryText) return null;
+    
+    try {
+      // Try to parse as JSON if it's in JSON format
+      const medicalHistory = JSON.parse(medicalHistoryText);
+      return (
+        <div className="space-y-2">
+          {Object.entries(medicalHistory).map(([key, value]) => (
+            <div key={key} className="flex justify-between">
+              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+              <span className="font-medium">{String(value)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    } catch (e) {
+      // If not JSON, display as plain text
+      return <p>{medicalHistoryText}</p>;
+    }
+  };
+  
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
@@ -154,7 +179,8 @@ const ResultDetail = () => {
             )}
           </div>
           
-          <div className="mb-6">
+          {/* Basic Patient Information */}
+          <div className="mb-4">
             <h2 className="text-md font-medium mb-2">Patient Information</h2>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
@@ -179,6 +205,34 @@ const ResultDetail = () => {
               </div>
             </div>
           </div>
+          
+          {/* Detailed Medical History - Collapsible Section */}
+          <Collapsible 
+            open={isPatientInfoOpen} 
+            onOpenChange={setIsPatientInfoOpen}
+            className="mb-6 border rounded-lg p-2"
+          >
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex w-full justify-between items-center p-2"
+              >
+                <span className="font-medium">Detailed Medical History</span>
+                {isPatientInfoOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-2 py-3">
+              {result.patients?.medical_history ? (
+                formatMedicalHistory(result.patients.medical_history)
+              ) : (
+                <p className="text-sm text-muted-foreground">No medical history available</p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
           
           <h2 className="text-md font-medium mb-3">Screening Images</h2>
           <Tabs defaultValue="before-acetic">
