@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,7 +10,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScreeningResult } from '@/services/screeningService';
 import { supabase } from '@/lib/supabase';
 
-// Define interface for medical history data structure
 interface MedicalHistoryData {
   sociodemographic?: {
     education?: string;
@@ -67,11 +65,9 @@ const ResultDetail = () => {
         if (data) {
           console.log('Loaded result detail:', data);
           
-          // For debugging - log the medical history
           if (data.patients?.medical_history) {
             console.log('Medical history raw:', data.patients.medical_history);
             
-            // Try to parse if it's a string
             if (typeof data.patients.medical_history === 'string') {
               try {
                 const parsed = JSON.parse(data.patients.medical_history) as MedicalHistoryData;
@@ -79,34 +75,40 @@ const ResultDetail = () => {
                 
                 if (parsed.medical && parsed.medical.conditions) {
                   console.log('Medical conditions:', parsed.medical.conditions);
+                  console.log('Is conditions an array:', Array.isArray(parsed.medical.conditions));
+                  console.log('Conditions length:', Array.isArray(parsed.medical.conditions) ? parsed.medical.conditions.length : 'Not an array');
                 }
                 
                 if (parsed.medical && parsed.medical.symptoms) {
                   console.log('Symptoms:', parsed.medical.symptoms);
+                  console.log('Is symptoms an array:', Array.isArray(parsed.medical.symptoms));
+                  console.log('Symptoms length:', Array.isArray(parsed.medical.symptoms) ? parsed.medical.symptoms.length : 'Not an array');
                 }
               } catch (e) {
                 console.error('Error parsing medical history:', e);
               }
             } else {
-              // It's already an object
-              const medicalHistory = data.patients.medical_history as MedicalHistoryData;
+              const medicalHistory = data.patients.medical_history as unknown as MedicalHistoryData;
               console.log('Medical history (object):', medicalHistory);
               
               if (medicalHistory.medical && 
                   medicalHistory.medical.conditions) {
                 console.log('Medical conditions:', 
                   medicalHistory.medical.conditions);
+                console.log('Is conditions an array:', Array.isArray(medicalHistory.medical.conditions));
+                console.log('Conditions length:', Array.isArray(medicalHistory.medical.conditions) ? medicalHistory.medical.conditions.length : 'Not an array');
               }
               
               if (medicalHistory.medical && 
                   medicalHistory.medical.symptoms) {
                 console.log('Symptoms:', 
                   medicalHistory.medical.symptoms);
+                console.log('Is symptoms an array:', Array.isArray(medicalHistory.medical.symptoms));
+                console.log('Symptoms length:', Array.isArray(medicalHistory.medical.symptoms) ? medicalHistory.medical.symptoms.length : 'Not an array');
               }
             }
           }
           
-          // Ensure the image URLs are properly formed
           if (data.before_image_url) {
             console.log('Before image URL:', data.before_image_url);
           }
@@ -190,7 +192,6 @@ const ResultDetail = () => {
       
       return (
         <div className="space-y-3">
-          {/* Patient Information */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Basic Information</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
@@ -212,94 +213,97 @@ const ResultDetail = () => {
             </div>
           </div>
           
-          {/* Sociodemographic Data */}
-          {medicalHistory.sociodemographic && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Sociodemographic Data</h3>
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <div className="text-muted-foreground">Education</div>
-                <div className="font-medium">{medicalHistory.sociodemographic.education || 'Not available'}</div>
-                
-                <div className="text-muted-foreground">Occupation</div>
-                <div className="font-medium">{medicalHistory.sociodemographic.occupation || 'Not available'}</div>
-                
-                <div className="text-muted-foreground">Marital Status</div>
-                <div className="font-medium">{medicalHistory.sociodemographic.maritalStatus || 'Not available'}</div>
-              </div>
-            </div>
-          )}
-          
-          {/* Lifestyle Information */}
-          {medicalHistory.lifestyle && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Lifestyle Factors</h3>
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <div className="text-muted-foreground">Smoking</div>
-                <div className="font-medium">{medicalHistory.lifestyle.smoking || 'Not available'}</div>
-                
-                <div className="text-muted-foreground">Alcohol</div>
-                <div className="font-medium">{medicalHistory.lifestyle.alcohol || 'Not available'}</div>
-                
-                <div className="text-muted-foreground">Physical Activity</div>
-                <div className="font-medium">{medicalHistory.lifestyle.physicalActivity || 'Not available'}</div>
-              </div>
-            </div>
-          )}
-          
-          {/* Medical Information */}
-          {medicalHistory.medical && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Medical Information</h3>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Sociodemographic Data</h3>
+            <div className="grid grid-cols-2 gap-y-2 text-sm">
+              <div className="text-muted-foreground">Education</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.education || 'Not available'}</div>
               
-              {/* Medical Conditions */}
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <div className="text-muted-foreground">Medical Conditions</div>
-                <div className="font-medium">
-                  {medicalHistory.medical.conditions && Array.isArray(medicalHistory.medical.conditions) ? (
-                    medicalHistory.medical.conditions.length > 0 ? (
-                      <ul className="list-disc pl-5 space-y-1">
-                        {medicalHistory.medical.conditions.map((condition: string, index: number) => (
-                          <li key={index}>{condition}</li>
-                        ))}
-                      </ul>
-                    ) : 'None'
-                  ) : typeof medicalHistory.medical.conditions === 'string' ? 
-                      medicalHistory.medical.conditions : 'None'}
-                </div>
-                
-                {/* Symptoms */}
-                <div className="text-muted-foreground">Symptoms</div>
-                <div className="font-medium">
-                  {medicalHistory.medical.symptoms && Array.isArray(medicalHistory.medical.symptoms) ? (
-                    medicalHistory.medical.symptoms.length > 0 ? (
-                      <ul className="list-disc pl-5 space-y-1">
-                        {medicalHistory.medical.symptoms.map((symptom: string, index: number) => (
-                          <li key={index}>{symptom}</li>
-                        ))}
-                      </ul>
-                    ) : 'None'
-                  ) : typeof medicalHistory.medical.symptoms === 'string' ? 
-                      medicalHistory.medical.symptoms : 'None'}
-                </div>
-                
-                {/* Reproductive History */}
-                {medicalHistory.medical.reproductiveHistory && (
-                  <>
-                    <div className="text-muted-foreground">Reproductive History</div>
-                    <div className="font-medium">{medicalHistory.medical.reproductiveHistory}</div>
-                  </>
-                )}
-                
-                {/* Last Visa Exam Results */}
-                {medicalHistory.medical.lastVisaExamResults && (
-                  <>
-                    <div className="text-muted-foreground">Last Visa Exam Results</div>
-                    <div className="font-medium">{medicalHistory.medical.lastVisaExamResults}</div>
-                  </>
-                )}
-              </div>
+              <div className="text-muted-foreground">Occupation</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.occupation || 'Not available'}</div>
+              
+              <div className="text-muted-foreground">Marital Status</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.maritalStatus || 'Not available'}</div>
             </div>
-          )}
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Lifestyle Factors</h3>
+            <div className="grid grid-cols-2 gap-y-2 text-sm">
+              <div className="text-muted-foreground">Smoking</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.smoking || 'Not available'}</div>
+              
+              <div className="text-muted-foreground">Alcohol</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.alcohol || 'Not available'}</div>
+              
+              <div className="text-muted-foreground">Physical Activity</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.physicalActivity || 'Not available'}</div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Medical Information</h3>
+            
+            <div className="grid grid-cols-2 gap-y-2 text-sm">
+              <div className="text-muted-foreground">Medical Conditions</div>
+              <div className="font-medium">
+                {medicalHistory.medical?.conditions ? (
+                  Array.isArray(medicalHistory.medical.conditions) ? (
+                    medicalHistory.medical.conditions.length > 0 ? (
+                      medicalHistory.medical.conditions.includes("None") ? (
+                        "None"
+                      ) : (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {medicalHistory.medical.conditions.map((condition: string, index: number) => (
+                            <li key={index}>{condition}</li>
+                          ))}
+                        </ul>
+                      )
+                    ) : "None"
+                  ) : (
+                    medicalHistory.medical.conditions === "None" ? 
+                      "None" : medicalHistory.medical.conditions
+                  )
+                ) : "None"}
+              </div>
+              
+              <div className="text-muted-foreground">Symptoms</div>
+              <div className="font-medium">
+                {medicalHistory.medical?.symptoms ? (
+                  Array.isArray(medicalHistory.medical.symptoms) ? (
+                    medicalHistory.medical.symptoms.length > 0 ? (
+                      medicalHistory.medical.symptoms.includes("None") ? (
+                        "None"
+                      ) : (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {medicalHistory.medical.symptoms.map((symptom: string, index: number) => (
+                            <li key={index}>{symptom}</li>
+                          ))}
+                        </ul>
+                      )
+                    ) : "None"
+                  ) : (
+                    medicalHistory.medical.symptoms === "None" ? 
+                      "None" : medicalHistory.medical.symptoms
+                  )
+                ) : "None"}
+              </div>
+              
+              {medicalHistory.medical?.reproductiveHistory && (
+                <>
+                  <div className="text-muted-foreground">Reproductive History</div>
+                  <div className="font-medium">{medicalHistory.medical.reproductiveHistory}</div>
+                </>
+              )}
+              
+              {medicalHistory.medical?.lastVisaExamResults && (
+                <>
+                  <div className="text-muted-foreground">Last Visa Exam Results</div>
+                  <div className="font-medium">{medicalHistory.medical.lastVisaExamResults}</div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       );
     } catch (e) {
@@ -353,7 +357,6 @@ const ResultDetail = () => {
             )}
           </div>
           
-          {/* Patient Information - Single Collapsible Section */}
           <div className="mt-6 mb-6">
             <Collapsible className="border rounded-md overflow-hidden">
               <CollapsibleTrigger className="flex justify-between items-center w-full p-3 bg-muted/30 hover:bg-muted/50 transition-all">
