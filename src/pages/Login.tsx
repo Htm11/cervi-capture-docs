@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -31,6 +32,7 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("login");
 
   React.useEffect(() => {
+    // If user is already authenticated, redirect to patient registration
     if (isAuthenticated) {
       navigate('/patient-registration');
     }
