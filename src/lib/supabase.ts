@@ -13,7 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true
   },
   global: {
-    fetch: (...args) => fetch(...args)
+    // Fix: properly type the fetch function to avoid spread operator issue
+    fetch: (url, options) => fetch(url, options)
   }
 });
 
