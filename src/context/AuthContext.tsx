@@ -21,6 +21,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Check if we're in a development environment without Supabase credentials
+const isDevelopmentWithoutSupabase = 
+  import.meta.env.DEV && 
+  (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY);
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -30,49 +35,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     setIsLoading(true);
     
-    // Get session from Supabase
     const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setCurrentDoctor({
-            id: user.id,
-            email: user.email || '',
-            name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0] || 'User'}`
-          });
-        }
+      // If in development without Supabase, use mock data
+      if (isDevelopmentWithoutSupabase) {
+        console.warn('Running in development mode without Supabase credentials. Using mock authentication.');
+        setIsLoading(false);
+        return;
       }
       
-      setIsLoading(false);
+      // Get session from Supabase
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setCurrentDoctor({
+              id: user.id,
+              email: user.email || '',
+              name: user.user_metadata?.name || `Dr. ${user.email?.split('@')[0] || 'User'}`
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching session:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     fetchSession();
     
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setCurrentDoctor({
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || `Dr. ${session.user.email?.split('@')[0] || 'User'}`
-          });
-        } else if (event === 'SIGNED_OUT') {
-          setCurrentDoctor(null);
+    // Only set up auth state change listener if Supabase is configured
+    if (!isDevelopmentWithoutSupabase) {
+      // Set up auth state change listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            setCurrentDoctor({
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || `Dr. ${session.user.email?.split('@')[0] || 'User'}`
+            });
+          } else if (event === 'SIGNED_OUT') {
+            setCurrentDoctor(null);
+          }
         }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+      );
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, []);
 
   // Real login function with Supabase
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
+    
+    // If in development without Supabase, use mock login
+    if (isDevelopmentWithoutSupabase) {
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+      setCurrentDoctor({
+        id: '123',
+        email: email,
+        name: `Dr. ${email.split('@')[0] || 'User'}`
+      });
+      toast({
+        title: "Development login successful",
+        description: `Welcome back, Dr. ${email.split('@')[0] || 'User'}`,
+      });
+      setIsLoading(false);
+      return true;
+    }
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -112,6 +147,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // New signup function with Supabase
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
+    
+    // If in development without Supabase, use mock signup
+    if (isDevelopmentWithoutSupabase) {
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+      setCurrentDoctor({
+        id: '123',
+        email: email,
+        name: name || `Dr. ${email.split('@')[0]}`
+      });
+      toast({
+        title: "Development account created",
+        description: "Account created successfully in development mode",
+      });
+      setIsLoading(false);
+      return true;
+    }
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -154,6 +205,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    // If in development without Supabase, use mock logout
+    if (isDevelopmentWithoutSupabase) {
+      setCurrentDoctor(null);
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      });
+      return;
+    }
+    
     try {
       await supabase.auth.signOut();
       setCurrentDoctor(null);
