@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -317,13 +316,24 @@ const Feedback = () => {
             </div>
             
             <div className="w-full space-y-3 mt-auto">
-              <Button
-                className="w-full bg-cervi-500 hover:bg-cervi-600 text-white"
-                onClick={handleNewScan}
-              >
-                <Home className="mr-2 h-4 w-4" />
-                Start New Patient Scan
-              </Button>
+              {!resultSaved ? (
+                <Button
+                  className="w-full bg-cervi-500 hover:bg-cervi-600 text-white"
+                  onClick={saveToDatabase}
+                  disabled={isSaving || !currentDoctor}
+                >
+                  {isSaving ? 'Saving to Database...' : 'Save Result to Database'}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleNewScan}
+                >
+                  <Home className="mr-2 h-4 w-4" />
+                  Start New Patient Scan
+                </Button>
+              )}
               
               <Button
                 variant="outline"
