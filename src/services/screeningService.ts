@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
@@ -82,15 +83,20 @@ export const ensurePatientExists = async (
       doctor_id: doctorId,
       first_name: patientData.firstName || 'Unknown',
       last_name: patientData.lastName || 'Patient',
-      date_of_birth: patientData.dateOfBirth || new Date().toISOString().split('T')[0],
+      date_of_birth: patientData.dateOfBirth instanceof Date 
+        ? patientData.dateOfBirth.toISOString().split('T')[0] 
+        : (typeof patientData.dateOfBirth === 'string' 
+            ? patientData.dateOfBirth 
+            : new Date().toISOString().split('T')[0]),
       contact_number: patientData.phoneNumber || null,
       email: patientData.email || null,
       medical_history: patientData.medicalHistory || null
     };
     
     const createdPatient = await createPatient(newPatient);
-    if (createdPatient) {
-      return createdPatient.id || '';
+    if (createdPatient && createdPatient.id) {
+      console.log('Created new patient with ID:', createdPatient.id);
+      return createdPatient.id;
     } else {
       throw new Error('Failed to create patient');
     }

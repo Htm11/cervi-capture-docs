@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Stepper, { Step } from '@/components/Stepper';
+import { createPatient } from '@/services/patientService'; 
 import { 
   Select,
   SelectContent,
@@ -84,7 +85,7 @@ const physicalActivityOptions = [
 ];
 
 const PatientRegistration = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -119,6 +120,8 @@ const PatientRegistration = () => {
   const [confirmInformed, setConfirmInformed] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [patientCreated, setPatientCreated] = useState(false);
+  const [createdPatientId, setCreatedPatientId] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (!isAuthenticated) {
@@ -233,11 +236,64 @@ const PatientRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleCreatePatient = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a patient.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      const newPatient = {
+        doctor_id: user.id,
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
+        contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
+        email: '',
+        medical_history: ''
+      };
+      
+      const createdPatient = await createPatient(newPatient);
+      
+      if (createdPatient && createdPatient.id) {
+        setPatientCreated(true);
+        setCreatedPatientId(createdPatient.id);
+        return createdPatient.id;
+      } else {
+        throw new Error('Failed to create patient');
+      }
+    } catch (error) {
+      console.error('Error creating patient:', error);
+      toast({
+        title: "Error creating patient",
+        description: "Could not save patient information. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleNext = async () => {
     if (validateStep(currentStep)) {
-      if (currentStep === 2) {
+      if (currentStep === 1) {
+        const patientId = await handleCreatePatient();
+        if (!patientId) {
+          return; // Don't proceed if patient creation failed
+        }
+        
+        setCurrentStep(2);
+      } else if (currentStep === 2) {
         const storageData = {
           ...patientData,
+          id: createdPatientId,
           screeningStep: 'before-acetic',
           phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
           
