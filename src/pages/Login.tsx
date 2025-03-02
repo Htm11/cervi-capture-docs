@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -6,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, Mail, Lock, Info, AlertTriangle } from 'lucide-react';
+import { Loader2, User, Mail, Lock, Info, AlertTriangle, WifiOff } from 'lucide-react';
 import { 
   Tabs, 
   TabsContent, 
@@ -36,19 +35,19 @@ const Login = () => {
   // Development mode indicator
   const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
   
-  const { login, signUp, isLoading, isAuthenticated } = useAuth();
+  const { login, signUp, isLoading, isAuthenticated, connectionError } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
     // Check if we're in development mode and log environment status
     const envStatus = checkSupabaseEnv();
-    setIsDevelopmentMode(!envStatus);
+    setIsDevelopmentMode(!envStatus || connectionError);
     
     // If already authenticated, redirect to patient registration
     if (isAuthenticated) {
       navigate('/patient-registration');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, connectionError]);
 
   const validateLoginForm = () => {
     const errors = { email: '', password: '' };
@@ -157,7 +156,7 @@ const Login = () => {
             <p className="text-cervi-800 text-lg font-medium">Welcome to Cervi Scanner</p>
           </div>
 
-          {isDevelopmentMode && (
+          {isDevelopmentMode && !connectionError && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-amber-800">
@@ -168,6 +167,22 @@ const Login = () => {
                   <li>VITE_SUPABASE_ANON_KEY</li>
                 </ul>
                 <p className="mt-1">Until then, mock authentication is enabled (any email/password will work).</p>
+              </div>
+            </div>
+          )}
+
+          {connectionError && (
+            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start space-x-2">
+              <WifiOff className="h-5 w-5 text-rose-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-rose-800">
+                <p className="font-medium">Connection Issues Detected</p>
+                <p>Unable to connect to Supabase authentication services. This could be due to:</p>
+                <ul className="list-disc list-inside mt-1">
+                  <li>Network connectivity issues</li>
+                  <li>Supabase service outage</li>
+                  <li>CORS or firewall restrictions</li>
+                </ul>
+                <p className="mt-1">Mock authentication is now enabled (any email/password will work).</p>
               </div>
             </div>
           )}

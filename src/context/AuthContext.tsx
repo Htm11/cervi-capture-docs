@@ -1,7 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase, hasValidSupabaseCredentials, checkSupabaseEnv } from '@/lib/supabase';
+import { toast } from "@/components/ui/use-toast";
+import { supabase, hasValidSupabaseCredentials, checkSupabaseEnv, testSupabaseConnection } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
 interface Doctor {
@@ -14,6 +14,7 @@ interface AuthContextType {
   currentDoctor: Doctor | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  connectionError: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   signUp: (email: string, password: string, name: string) => Promise<boolean>;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [connectionError, setConnectionError] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Initialize auth state
@@ -36,40 +38,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       setIsLoading(true);
       
-      // Get current session
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting session:', error);
-        setIsLoading(false);
-        return;
-      }
-      
-      if (session) {
-        setSession(session);
-        
-        // Convert the session user to a doctor object
-        if (session.user) {
-          const { id, email } = session.user;
-          
-          // Try to get user metadata (name) from Supabase profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('id', id)
-            .single();
-          
-          const name = profileData?.name || email?.split('@')[0] || 'Doctor';
-          
-          setCurrentDoctor({
-            id,
-            name,
-            email: email || '',
-          });
+      // Test Supabase connection first
+      if (envStatus) {
+        const connectionSuccessful = await testSupabaseConnection();
+        if (!connectionSuccessful) {
+          console.log('⚠️ Supabase connection failed. Falling back to mock authentication.');
+          setConnectionError(true);
+          setIsLoading(false);
+          return;
         }
       }
       
-      setIsLoading(false);
+      try {
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setConnectionError(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (session) {
+          setSession(session);
+          
+          // Convert the session user to a doctor object
+          if (session.user) {
+            const { id, email } = session.user;
+            
+            // Try to get user metadata (name) from Supabase profile
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('name')
+                .eq('id', id)
+                .single();
+              
+              const name = profileData?.name || email?.split('@')[0] || 'Doctor';
+              
+              setCurrentDoctor({
+                id,
+                name,
+                email: email || '',
+              });
+            } catch (profileError) {
+              console.error('Error fetching profile:', profileError);
+              // Still set basic doctor info even if profile fetch fails
+              setCurrentDoctor({
+                id,
+                name: email?.split('@')[0] || 'Doctor',
+                email: email || '',
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Auth initialization error:', e);
+        setConnectionError(true);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     initAuth();
@@ -83,19 +112,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const { id, email } = session.user;
           
           // Try to get user metadata from Supabase profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('id', id)
-            .single();
-          
-          const name = profileData?.name || email?.split('@')[0] || 'Doctor';
-          
-          setCurrentDoctor({
-            id,
-            name,
-            email: email || '',
-          });
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', id)
+              .single();
+            
+            const name = profileData?.name || email?.split('@')[0] || 'Doctor';
+            
+            setCurrentDoctor({
+              id,
+              name,
+              email: email || '',
+            });
+          } catch (profileError) {
+            console.error('Error fetching profile on auth change:', profileError);
+            // Still set basic doctor info even if profile fetch fails
+            setCurrentDoctor({
+              id,
+              name: email?.split('@')[0] || 'Doctor',
+              email: email || '',
+            });
+          }
         } else {
           setCurrentDoctor(null);
         }
@@ -112,8 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // Check if we're using mock auth in development
-      if (!hasValidSupabaseCredentials()) {
+      // Check if we're using mock auth in development or if there was a connection error
+      if (!hasValidSupabaseCredentials() || connectionError) {
         // Mock successful login for development
         const mockUser = {
           id: 'mock-user-id',
@@ -137,9 +176,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Login error:', error);
+        
+        // Provide better error messages based on error type
+        let errorMessage = error.message;
+        if (error.message.includes('Failed to fetch') || error.message.includes('Load failed')) {
+          errorMessage = "Network error: Please check your internet connection and try again.";
+          setConnectionError(true);
+          
+          // If network error, fall back to mock authentication
+          const mockUser = {
+            id: 'mock-user-id',
+            name: email.split('@')[0] || 'Doctor',
+            email: email
+          };
+          setCurrentDoctor(mockUser);
+          
+          toast({
+            title: "Connection issues detected",
+            description: `Logged in as ${mockUser.name} (mock authentication)`,
+          });
+          
+          return true;
+        }
+        
         toast({
           title: "Login failed",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
         return false;
@@ -154,14 +216,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      
+      // Fall back to mock auth if there's an unexpected error
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('Load failed')) {
+        const mockUser = {
+          id: 'mock-user-id',
+          name: email.split('@')[0] || 'Doctor',
+          email: email
+        };
+        setCurrentDoctor(mockUser);
+        setConnectionError(true);
+        
+        toast({
+          title: "Connection issues detected",
+          description: `Logged in as ${mockUser.name} (mock authentication)`,
+        });
+        
+        return true;
+      }
+      
       toast({
         title: "Login failed",
-        description: "An unexpected error occurred",
+        description: "An unexpected error occurred. Using mock authentication.",
         variant: "destructive",
       });
-      return false;
+      
+      // Use mock auth as fallback
+      const mockUser = {
+        id: 'mock-user-id',
+        name: email.split('@')[0] || 'Doctor',
+        email: email
+      };
+      setCurrentDoctor(mockUser);
+      
+      return true;
     } finally {
       setIsLoading(false);
     }
@@ -269,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentDoctor,
         isAuthenticated: !!currentDoctor,
         isLoading,
+        connectionError,
         login,
         logout,
         signUp
