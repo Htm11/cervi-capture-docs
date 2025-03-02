@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Search, Calendar, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PatientResult {
   id?: string;
@@ -20,11 +21,50 @@ interface PatientResult {
   afterAceticImage?: string;
 }
 
+// Helper functions to manage results history in localStorage
+export const getResultsHistory = (): PatientResult[] => {
+  const storedResults = localStorage.getItem('resultsHistory');
+  if (!storedResults) return [];
+  
+  try {
+    const parsedResults = JSON.parse(storedResults);
+    return Array.isArray(parsedResults) ? parsedResults : [];
+  } catch (error) {
+    console.error("Error parsing results history:", error);
+    return [];
+  }
+};
+
+export const saveResultToHistory = (result: PatientResult): void => {
+  // Get existing results
+  const existingResults = getResultsHistory();
+  
+  // Generate a unique ID if not present
+  const resultWithId = {
+    ...result,
+    id: result.id || `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  };
+  
+  // Check if this result already exists (by ID)
+  const resultExists = existingResults.some(r => r.id === resultWithId.id);
+  
+  // Save the updated results
+  const updatedResults = resultExists
+    ? existingResults.map(r => r.id === resultWithId.id ? resultWithId : r)
+    : [...existingResults, resultWithId];
+  
+  localStorage.setItem('resultsHistory', JSON.stringify(updatedResults));
+  
+  // Also save as current patient
+  localStorage.setItem('currentPatient', JSON.stringify(resultWithId));
+};
+
 const Results = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [results, setResults] = useState<PatientResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -33,19 +73,19 @@ const Results = () => {
     }
     
     // Load all historical results from local storage
-    const storedResults = localStorage.getItem('resultsHistory');
-    if (storedResults) {
-      try {
-        const parsedResults = JSON.parse(storedResults);
-        // Sort by date (newest first)
-        parsedResults.sort((a: PatientResult, b: PatientResult) => 
-          new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-        );
-        setResults(parsedResults);
-      } catch (error) {
-        console.error("Error parsing results:", error);
-        setResults([]);
-      }
+    const resultsHistory = getResultsHistory();
+    console.log('Loaded results history:', resultsHistory);
+    
+    // Sort by date (newest first)
+    resultsHistory.sort((a: PatientResult, b: PatientResult) => 
+      new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
+    );
+    
+    setResults(resultsHistory);
+    
+    // For demonstration, let's add test results if none exist
+    if (resultsHistory.length === 0) {
+      console.log('No results found, you may want to add some test data for demonstration');
     }
   }, [isAuthenticated, navigate]);
   
@@ -67,10 +107,44 @@ const Results = () => {
     navigate('/feedback');
   };
   
+  // For testing: Add a sample result
+  const addSampleResult = () => {
+    const sampleResult: PatientResult = {
+      id: `test_${Date.now()}`,
+      firstName: "Test",
+      lastName: `Patient ${Math.floor(Math.random() * 100)}`,
+      phoneNumber: `+1${Math.floor(Math.random() * 10000000000).toString().padStart(10, '0')}`,
+      dateOfBirth: "1990-01-01",
+      analysisResult: Math.random() > 0.5 ? 'positive' : 'negative',
+      analysisDate: new Date().toISOString(),
+    };
+    
+    saveResultToHistory(sampleResult);
+    
+    // Reload results
+    setResults(getResultsHistory().sort((a, b) => 
+      new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
+    ));
+    
+    toast({
+      title: "Added sample result",
+      description: "A sample patient result was added for testing",
+    });
+  };
+  
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Patient Results History</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Patient Results History</h1>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={addSampleResult}
+          >
+            Add Sample (Test)
+          </Button>
+        </div>
         
         {/* Search input */}
         <div className="relative mb-6">
