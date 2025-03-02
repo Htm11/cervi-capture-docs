@@ -10,13 +10,15 @@ interface LayoutProps {
   className?: string;
   hideHeader?: boolean;
   hideBottomMenu?: boolean;
+  showBackButton?: boolean; // Add this new prop
 }
 
 const Layout = ({ 
   children, 
   className, 
   hideHeader = false, 
-  hideBottomMenu = false 
+  hideBottomMenu = false,
+  showBackButton = false // Add default value for the new prop
 }: LayoutProps) => {
   const location = useLocation();
   
@@ -28,7 +30,7 @@ const Layout = ({
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {!hideHeader && <Header />}
+      {!hideHeader && <Header showBackButton={showBackButton} />}
       <main 
         className={cn(
           "flex-1 flex flex-col w-full max-w-screen-md mx-auto px-4 py-4 animate-fade-in",
