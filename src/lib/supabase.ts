@@ -24,6 +24,96 @@ if (hasValidSupabaseCredentials()) {
   console.warn('Supabase credentials not found or incomplete. Using mock authentication.');
 }
 
+// Directly execute SQL for database setup
+export const executeSchemaSetup = async () => {
+  if (!supabase) {
+    return { success: false, error: 'Supabase client not initialized' };
+  }
+  
+  try {
+    console.log('Starting direct SQL schema setup...');
+    
+    // Create patients table
+    const patientsResult = await supabase.rpc('execute_sql', {
+      sql_query: `
+        CREATE TABLE IF NOT EXISTS patients (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          "firstName" TEXT NOT NULL,
+          "lastName" TEXT NOT NULL,
+          "phoneNumber" TEXT NOT NULL,
+          "dateOfBirth" TIMESTAMP,
+          education TEXT,
+          occupation TEXT,
+          "maritalStatus" TEXT,
+          "smokingStatus" TEXT,
+          "alcoholUse" TEXT,
+          "physicalActivity" TEXT,
+          "existingConditions" TEXT[],
+          "commonSymptoms" TEXT[],
+          "reproductiveHistory" TEXT,
+          "lastVisaExamResults" TEXT,
+          "screeningStep" TEXT DEFAULT 'before-acetic',
+          doctor_id UUID NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+      `
+    });
+    
+    if (patientsResult.error) {
+      console.error('Error creating patients table:', patientsResult.error);
+      // Continue anyway, we'll try another approach
+    } else {
+      console.log('Patients table created or already exists');
+    }
+    
+    // Create screening_results table
+    const resultsResult = await supabase.rpc('execute_sql', {
+      sql_query: `
+        CREATE TABLE IF NOT EXISTS screening_results (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id UUID NOT NULL,
+          doctor_id UUID NOT NULL,
+          "analysisResult" TEXT NOT NULL CHECK ("analysisResult" IN ('positive', 'negative')),
+          "analysisDate" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          "beforeAceticImage" TEXT,
+          "afterAceticImage" TEXT,
+          notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+      `
+    });
+    
+    if (resultsResult.error) {
+      console.error('Error creating screening_results table:', resultsResult.error);
+      // Continue anyway, we'll try another approach
+    } else {
+      console.log('Screening results table created or already exists');
+    }
+    
+    // Create storage bucket
+    try {
+      await supabase.storage.createBucket('cervical_images', {
+        public: true
+      });
+      console.log('Storage bucket created or already exists');
+    } catch (error) {
+      if (error.status !== 409) { // 409 means it already exists
+        console.warn('Warning creating storage bucket:', error);
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in schema setup:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error during schema setup'
+    };
+  }
+};
+
 // Helper function to check if Supabase is properly configured
 export const testSupabaseConnection = async () => {
   try {
@@ -59,31 +149,6 @@ export const testSupabaseConnection = async () => {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
-};
-
-// Execute the SQL setup directly
-export const executeSchemaSetup = async () => {
-  try {
-    if (!supabase) {
-      return { success: false, error: 'Supabase client not initialized' };
-    }
-    
-    // Execute the schema SQL
-    const { error } = await supabase.rpc('execute_schema_setup');
-    
-    if (error) {
-      console.error('Error executing schema setup:', error);
-      return { success: false, error: error.message };
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Schema setup error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error during schema setup'
     };
   }
 };

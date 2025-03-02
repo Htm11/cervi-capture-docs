@@ -1,5 +1,4 @@
-
-import { supabase } from '@/lib/supabase';
+import { supabase, executeSchemaSetup, testSupabaseConnection } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
 
 // Function to initialize database schema if needed
@@ -7,94 +6,32 @@ export const initializeDatabaseSchema = async (): Promise<{ success: boolean, er
   try {
     console.log("Checking and initializing database schema...");
     
-    // First, we'll create the SQL schema function on Supabase if it doesn't exist
-    const { data: funcExists, error: funcError } = await supabase.rpc('function_exists', { 
-      function_name: 'execute_schema_setup' 
-    });
+    // First, test the connection
+    const connectionTest = await testSupabaseConnection();
     
-    // If the function doesn't exist, we need to create it
-    if (!funcExists || funcError) {
-      console.log("Creating schema setup function...");
+    if (!connectionTest.success) {
+      console.error("Database connection failed:", connectionTest.error);
+      return { 
+        success: false, 
+        error: `Database connection error: ${connectionTest.error}` 
+      };
+    }
+    
+    if (connectionTest.needsSetup) {
+      console.log("Database needs setup, creating tables...");
       
-      // Create the SQL function to set up schema
-      const { error: createFuncError } = await supabase.rpc('create_schema_function', {
-        function_sql: `
-          CREATE OR REPLACE FUNCTION execute_schema_setup()
-          RETURNS boolean
-          LANGUAGE plpgsql
-          SECURITY DEFINER
-          AS $$
-          BEGIN
-            -- Create patients table if it doesn't exist
-            CREATE TABLE IF NOT EXISTS patients (
-              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-              "firstName" TEXT NOT NULL,
-              "lastName" TEXT NOT NULL,
-              "phoneNumber" TEXT NOT NULL,
-              "dateOfBirth" TIMESTAMP,
-              education TEXT,
-              occupation TEXT,
-              "maritalStatus" TEXT,
-              "smokingStatus" TEXT,
-              "alcoholUse" TEXT,
-              "physicalActivity" TEXT,
-              "existingConditions" TEXT[],
-              "commonSymptoms" TEXT[],
-              "reproductiveHistory" TEXT,
-              "lastVisaExamResults" TEXT,
-              "screeningStep" TEXT DEFAULT 'before-acetic',
-              doctor_id UUID NOT NULL,
-              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            );
-
-            -- Create screening_results table if it doesn't exist
-            CREATE TABLE IF NOT EXISTS screening_results (
-              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-              patient_id UUID NOT NULL,
-              doctor_id UUID NOT NULL,
-              "analysisResult" TEXT NOT NULL CHECK ("analysisResult" IN ('positive', 'negative')),
-              "analysisDate" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-              "beforeAceticImage" TEXT,
-              "afterAceticImage" TEXT,
-              notes TEXT,
-              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            );
-
-            -- Set up storage bucket
-            BEGIN
-              INSERT INTO storage.buckets (id, name, public) 
-              VALUES ('cervical_images', 'cervical_images', true)
-              ON CONFLICT (id) DO NOTHING;
-            EXCEPTION
-              WHEN OTHERS THEN
-                NULL;
-            END;
-
-            RETURN TRUE;
-          END;
-          $$;
-        `
-      });
+      // Try to execute the schema setup using our direct SQL executor
+      const setupResult = await executeSchemaSetup();
       
-      if (createFuncError) {
-        console.error("Error creating schema function:", createFuncError);
-        return { success: false, error: "Failed to create database setup function" };
+      if (!setupResult.success) {
+        console.log("Schema setup using SQL failed, trying alternative approach...");
+        return await createTablesDirectly();
       }
-    }
-    
-    // Now execute the function to set up the schema
-    const { error: execError } = await supabase.rpc('execute_schema_setup');
-    
-    if (execError) {
-      console.error("Error executing schema setup:", execError);
       
-      // Try alternative approach with direct table creation using insert
-      return await createTablesDirectly();
+      return { success: true };
     }
     
-    console.log("Database schema setup completed successfully");
+    console.log("Database already set up correctly");
     return { success: true };
   } catch (error) {
     console.error("Error initializing database schema:", error);
