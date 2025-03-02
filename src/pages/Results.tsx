@@ -74,7 +74,7 @@ const Results = () => {
   });
   
   const handleResultClick = (result: ScreeningResult) => {
-    // Create patient object from the joined patients data
+    // Make sure we handle cases where patient data might be missing
     const patient = {
       id: result.patient_id,
       firstName: result.patients?.first_name || '',

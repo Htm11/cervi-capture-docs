@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { Doctor } from '@/types/auth';
@@ -150,10 +149,10 @@ export const getDoctorScreeningResults = async (
 
     console.log("Fetching results for doctor:", doctorId);
 
-    // Use patients!inner(*) to join with patients table and get patient data
+    // Use left join instead of inner join to get all results even if patient record is missing
     const { data, error } = await supabase
       .from('screening_results')
-      .select('*, patients!inner(*)')
+      .select('*, patients(*)')
       .eq('doctor_id', doctorId)
       .order('created_at', { ascending: false });
 
@@ -176,6 +175,8 @@ export const getDoctorScreeningResults = async (
       
       if (checkError) {
         console.error('Error checking for results:', checkError);
+      } else if (checkData && checkData.length > 0) {
+        console.log("Found results without join, but no patient data available");
       }
     }
 

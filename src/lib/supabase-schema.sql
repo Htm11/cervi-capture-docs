@@ -98,6 +98,11 @@ CREATE POLICY "Doctors can update their patients' results"
   FOR UPDATE 
   USING (auth.uid() = doctor_id);
 
+CREATE POLICY "Doctors can delete their patients' results" 
+  ON public.screening_results
+  FOR DELETE 
+  USING (auth.uid() = doctor_id);
+
 -- Function to handle new user registration
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
