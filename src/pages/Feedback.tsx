@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Camera, Home, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, Camera, Home, Image as ImageIcon, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 
@@ -23,6 +23,7 @@ const Feedback = () => {
   const [beforeImage, setBeforeImage] = useState<string | null>(null);
   const [afterImage, setAfterImage] = useState<string | null>(null);
   const [patientData, setPatientData] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<'positive' | 'negative' | null>(null);
   
   // Animation state
   const [showAnimation, setShowAnimation] = useState(true);
@@ -55,6 +56,45 @@ const Feedback = () => {
     const patientDataString = localStorage.getItem('currentPatient');
     if (patientDataString) {
       setPatientData(JSON.parse(patientDataString));
+    }
+    
+    // Simulate analysis result - in real app, this would come from an API
+    // For demo purposes, randomly set as positive or negative
+    const result = Math.random() > 0.5 ? 'positive' : 'negative';
+    setAnalysisResult(result);
+    
+    // Save result to patient data
+    if (patientDataString) {
+      const patient = JSON.parse(patientDataString);
+      const updatedPatient = {
+        ...patient,
+        analysisResult: result,
+        analysisDate: new Date().toISOString()
+      };
+      
+      // Save updated patient data
+      localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
+      
+      // Save to results history
+      const resultsHistory = JSON.parse(localStorage.getItem('resultsHistory') || '[]');
+      
+      // Check if this patient result already exists
+      const existingIndex = resultsHistory.findIndex((p: any) => 
+        p.id === updatedPatient.id || 
+        (p.firstName === updatedPatient.firstName && 
+         p.lastName === updatedPatient.lastName && 
+         p.phoneNumber === updatedPatient.phoneNumber)
+      );
+      
+      if (existingIndex >= 0) {
+        // Update existing record
+        resultsHistory[existingIndex] = updatedPatient;
+      } else {
+        // Add new record
+        resultsHistory.push(updatedPatient);
+      }
+      
+      localStorage.setItem('resultsHistory', JSON.stringify(resultsHistory));
     }
     
     // Hide animation after delay
@@ -147,6 +187,31 @@ const Feedback = () => {
                     </div>
                   )}
                 </div>
+              </div>
+              
+              {/* Analysis Results */}
+              <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+                <h2 className="text-lg font-medium mb-3">Analysis Results</h2>
+                
+                {analysisResult === 'positive' ? (
+                  <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-100">
+                    <XCircle className="h-6 w-6 text-red-500" />
+                    <div>
+                      <p className="font-medium text-red-800">Positive</p>
+                      <p className="text-sm text-red-600">Abnormal cells detected. Further examination is recommended.</p>
+                    </div>
+                  </div>
+                ) : analysisResult === 'negative' ? (
+                  <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                    <div>
+                      <p className="font-medium text-green-800">Negative</p>
+                      <p className="text-sm text-green-600">No abnormal cells detected. Regular check-ups recommended.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p>Analysis pending...</p>
+                )}
               </div>
               
               {patientData && (

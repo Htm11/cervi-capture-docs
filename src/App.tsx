@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import PatientRegistration from "./pages/PatientRegistration";
 import Camera from "./pages/Camera";
 import Feedback from "./pages/Feedback";
+import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/patient-registration" element={<PatientRegistration />} />
             <Route path="/camera" element={<Camera />} />
             <Route path="/feedback" element={<Feedback />} />
+            <Route path="/results" element={<Results />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
