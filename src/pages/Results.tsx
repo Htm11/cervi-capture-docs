@@ -30,10 +30,20 @@ const Results = () => {
       return;
     }
     
-    // Load results from local storage
+    // Load all historical results from local storage
     const storedResults = localStorage.getItem('resultsHistory');
     if (storedResults) {
-      setResults(JSON.parse(storedResults));
+      try {
+        const parsedResults = JSON.parse(storedResults);
+        // Sort by date (newest first)
+        parsedResults.sort((a: PatientResult, b: PatientResult) => 
+          new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
+        );
+        setResults(parsedResults);
+      } catch (error) {
+        console.error("Error parsing results:", error);
+        setResults([]);
+      }
     }
   }, [isAuthenticated, navigate]);
   
@@ -46,13 +56,19 @@ const Results = () => {
   const handleResultClick = (result: PatientResult) => {
     // Set as current patient and navigate to feedback
     localStorage.setItem('currentPatient', JSON.stringify(result));
+    
+    // We need to set the images too if available
+    // This is a simplification - in a real app you would store image references in the database
+    localStorage.setItem('beforeAceticImage', result.beforeAceticImage || '');
+    localStorage.setItem('afterAceticImage', result.afterAceticImage || '');
+    
     navigate('/feedback');
   };
   
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Patient Results</h1>
+        <h1 className="text-2xl font-bold mb-4">Patient Results History</h1>
         
         {/* Search input */}
         <div className="relative mb-6">

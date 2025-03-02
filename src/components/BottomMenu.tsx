@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileText, Camera, List } from 'lucide-react';
+import { Camera, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const BottomMenu = () => {
@@ -10,8 +10,7 @@ const BottomMenu = () => {
   const location = useLocation();
   
   // Determine which menu item is active
-  const isNewScanActive = location.pathname === '/patient-registration' || location.pathname === '/camera';
-  const isFeedbackActive = location.pathname === '/feedback';
+  const isNewScanActive = location.pathname === '/patient-registration' || location.pathname === '/camera' || location.pathname === '/feedback';
   const isResultsActive = location.pathname === '/results';
   
   return (
@@ -27,18 +26,6 @@ const BottomMenu = () => {
         >
           <Camera className="h-5 w-5 mb-1" />
           <span className="text-xs">New Scan</span>
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={cn(
-            "flex-1 flex flex-col h-16 rounded-lg",
-            isFeedbackActive && "bg-cervi-50 text-cervi-700"
-          )}
-          onClick={() => navigate('/feedback')}
-        >
-          <FileText className="h-5 w-5 mb-1" />
-          <span className="text-xs">Current</span>
         </Button>
         
         <Button
