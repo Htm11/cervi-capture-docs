@@ -12,6 +12,7 @@ import Camera from './pages/Camera';
 import Feedback from './pages/Feedback';
 import Results from './pages/Results';
 import ResultDetail from './pages/ResultDetail';
+import Settings from './pages/Settings';
 
 const router = createBrowserRouter([
   {
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
       { path: 'feedback', element: <Feedback /> },
       { path: 'results', element: <Results /> },
       { path: 'results/:resultId', element: <ResultDetail /> },
+      { path: 'settings', element: <Settings /> },
       { path: '*', element: <NotFound /> }
     ]
   }
