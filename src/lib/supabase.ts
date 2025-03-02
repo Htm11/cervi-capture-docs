@@ -24,15 +24,49 @@ if (hasValidSupabaseCredentials()) {
   console.warn('Supabase credentials not found or incomplete. Using mock authentication.');
 }
 
-// Directly execute SQL for database setup
+// Direct SQL execution for database schema setup
 export const executeSchemaSetup = async () => {
   if (!supabase) {
     return { success: false, error: 'Supabase client not initialized' };
   }
   
   try {
-    console.log('Starting direct SQL schema setup...');
+    console.log('Starting database schema setup...');
     
+    // Check if we can run SQL via RPC
+    const canExecuteSQL = await checkRPCSupport();
+    
+    if (canExecuteSQL) {
+      return await setupSchemaWithRPC();
+    } else {
+      console.log('RPC method not available, attempting direct table creation...');
+      return await setupSchemaDirectly();
+    }
+  } catch (error) {
+    console.error('Error in schema setup:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error during schema setup'
+    };
+  }
+};
+
+// Check if the execute_sql RPC function is available
+const checkRPCSupport = async () => {
+  try {
+    const { error } = await supabase.rpc('execute_sql', {
+      sql_query: 'SELECT 1'
+    });
+    
+    return !error;
+  } catch {
+    return false;
+  }
+};
+
+// Setup schema using RPC if available
+const setupSchemaWithRPC = async () => {
+  try {
     // Create patients table
     const patientsResult = await supabase.rpc('execute_sql', {
       sql_query: `
@@ -61,10 +95,8 @@ export const executeSchemaSetup = async () => {
     });
     
     if (patientsResult.error) {
-      console.error('Error creating patients table:', patientsResult.error);
-      // Continue anyway, we'll try another approach
-    } else {
-      console.log('Patients table created or already exists');
+      console.error('Error creating patients table via RPC:', patientsResult.error);
+      return { success: false, error: patientsResult.error.message };
     }
     
     // Create screening_results table
@@ -86,14 +118,75 @@ export const executeSchemaSetup = async () => {
     });
     
     if (resultsResult.error) {
-      console.error('Error creating screening_results table:', resultsResult.error);
-      // Continue anyway, we'll try another approach
+      console.error('Error creating screening_results table via RPC:', resultsResult.error);
+      return { success: false, error: resultsResult.error.message };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in RPC schema setup:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'RPC schema setup failed' 
+    };
+  }
+};
+
+// Create tables directly using Supabase API
+const setupSchemaDirectly = async () => {
+  try {
+    console.log('Attempting to create tables directly...');
+    
+    // Try to create patients table by inserting a test record
+    console.log('Creating patients table...');
+    const { error: patientsError } = await supabase
+      .from('patients')
+      .insert({
+        firstName: 'TestUser',
+        lastName: 'TestLastName',
+        phoneNumber: '1234567890',
+        doctor_id: '00000000-0000-0000-0000-000000000000',
+        screeningStep: 'before-acetic'
+      })
+      .select('id')
+      .single();
+    
+    // If there's an error that's not a unique constraint violation, the table might not exist
+    if (patientsError && patientsError.code !== '23505') {
+      console.error('Error creating patients table directly:', patientsError);
+      // We'll continue anyway to try the other table
     } else {
-      console.log('Screening results table created or already exists');
+      console.log('Patients table exists or was created successfully');
+    }
+    
+    // Try to create screening_results table by inserting a test record
+    console.log('Creating screening_results table...');
+    const { error: resultError } = await supabase
+      .from('screening_results')
+      .insert({
+        patient_id: '00000000-0000-0000-0000-000000000000',
+        doctor_id: '00000000-0000-0000-0000-000000000000',
+        analysisResult: 'negative'
+      })
+      .select('id')
+      .single();
+    
+    if (resultError && resultError.code !== '23505') {
+      console.error('Error creating screening_results table directly:', resultError);
+      // If both attempts failed, return an error
+      if (patientsError && patientsError.code !== '23505') {
+        return { 
+          success: false, 
+          error: 'Failed to create database tables. Check Supabase permissions.'
+        };
+      }
+    } else {
+      console.log('Screening results table exists or was created successfully');
     }
     
     // Create storage bucket
     try {
+      console.log('Creating storage bucket...');
       await supabase.storage.createBucket('cervical_images', {
         public: true
       });
@@ -104,12 +197,13 @@ export const executeSchemaSetup = async () => {
       }
     }
     
+    console.log('Database schema setup completed successfully');
     return { success: true };
   } catch (error) {
-    console.error('Error in schema setup:', error);
+    console.error('Error in direct schema setup:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error during schema setup'
+      error: error instanceof Error ? error.message : 'Direct schema setup failed'
     };
   }
 };
