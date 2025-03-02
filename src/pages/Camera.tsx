@@ -9,7 +9,6 @@ import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import CameraView from '@/components/camera/CameraView';
 import ImagePreview from '@/components/camera/ImagePreview';
-import { uploadImage, updatePatient } from '@/services/patientService';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,23 +27,26 @@ const steps: Step[] = [
 ];
 
 const Camera = () => {
-  const { isAuthenticated, currentDoctor } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // State
   const [photoTaken, setPhotoTaken] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [patientData, setPatientData] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState(3);
+  const [currentStep, setCurrentStep] = useState(3); // Default to "Before Acetic"
   const [showAceticAcidDialog, setShowAceticAcidDialog] = useState(false);
   
+  // Check authentication and get patient data
   useEffect(() => {
-    if (!isAuthenticated || !currentDoctor) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     
+    // Check if we have patient data
     const storedPatientData = localStorage.getItem('currentPatient');
     if (!storedPatientData) {
       toast({
@@ -59,12 +61,13 @@ const Camera = () => {
     const parsedData = JSON.parse(storedPatientData);
     setPatientData(parsedData);
     
+    // Set current step based on screening step
     if (parsedData.screeningStep === 'after-acetic') {
       setCurrentStep(4);
     } else {
       setCurrentStep(3);
     }
-  }, [isAuthenticated, currentDoctor, navigate, toast]);
+  }, [isAuthenticated, navigate, toast]);
   
   const handlePhotoTaken = (imageDataUrl: string) => {
     setCapturedImage(imageDataUrl);
@@ -76,25 +79,19 @@ const Camera = () => {
     setCapturedImage(null);
   };
   
-  const analyzeImage = async () => {
-    if (!capturedImage || !patientData || !currentDoctor) return;
+  const analyzeImage = () => {
+    if (!capturedImage || !patientData) return;
     
     setIsAnalyzing(true);
     
-    try {
-      const imageFileName = currentStep === 3 
-        ? `${currentDoctor.id}/${patientData.id}/before-acetic-${new Date().getTime()}.jpg`
-        : `${currentDoctor.id}/${patientData.id}/after-acetic-${new Date().getTime()}.jpg`;
-      
-      const { url: imageUrl, error: uploadError } = await uploadImage(capturedImage, imageFileName);
-      
-      if (uploadError || !imageUrl) {
-        throw new Error("Failed to upload image");
-      }
-      
+    // Simulate image analysis
+    setTimeout(() => {
+      // Save the image based on current step
       if (currentStep === 3) {
-        localStorage.setItem('beforeAceticImage', imageUrl);
+        // Before acetic acid
+        localStorage.setItem('beforeAceticImage', capturedImage || '');
         
+        // Update patient data with new step
         const updatedPatientData = {
           ...patientData,
           screeningStep: 'after-acetic'
@@ -104,24 +101,16 @@ const Camera = () => {
         setIsAnalyzing(false);
         setShowAceticAcidDialog(true);
       } else {
-        localStorage.setItem('afterAceticImage', imageUrl);
+        // After acetic acid
+        localStorage.setItem('afterAceticImage', capturedImage || '');
         
-        await updatePatient(patientData.id, { screeningStep: 'completed' });
-        
-        localStorage.setItem('capturedImage', imageUrl);
+        // For demo, also set capturedImage to ensure compatibility with feedback page
+        localStorage.setItem('capturedImage', capturedImage || '');
         
         setIsAnalyzing(false);
         navigate('/feedback');
       }
-    } catch (error) {
-      console.error('Error processing image:', error);
-      toast({
-        title: "Image processing failed",
-        description: error.message || "There was an error processing the image",
-        variant: "destructive",
-      });
-      setIsAnalyzing(false);
-    }
+    }, 2000);
   };
   
   const handleAceticAcidConfirm = () => {

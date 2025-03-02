@@ -16,8 +16,6 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Stepper, { Step } from '@/components/Stepper';
-import { createPatient } from '@/services/patientService';
-import { Patient } from '@/types/patient';
 import { 
   Select,
   SelectContent,
@@ -86,7 +84,7 @@ const physicalActivityOptions = [
 ];
 
 const PatientRegistration = () => {
-  const { isAuthenticated, currentDoctor } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -235,66 +233,22 @@ const PatientRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (validateStep(currentStep)) {
       if (currentStep === 2) {
-        if (!currentDoctor) {
-          toast({
-            title: "Authentication error",
-            description: "Please log in again to continue",
-            variant: "destructive",
-          });
-          navigate('/login');
-          return;
-        }
+        const storageData = {
+          ...patientData,
+          screeningStep: 'before-acetic',
+          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
+          
+          sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
+          medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
+          lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
+          symptoms: patientData.commonSymptoms.join(', ')
+        };
         
-        setIsSubmitting(true);
-        
-        try {
-          const patientToCreate: Patient = {
-            firstName: patientData.firstName,
-            lastName: patientData.lastName,
-            phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
-            dateOfBirth: patientData.dateOfBirth ? patientData.dateOfBirth.toISOString() : undefined,
-            education: patientData.education,
-            occupation: patientData.occupation,
-            maritalStatus: patientData.maritalStatus,
-            smokingStatus: patientData.smokingStatus,
-            alcoholUse: patientData.alcoholUse,
-            physicalActivity: patientData.physicalActivity,
-            existingConditions: patientData.existingConditions,
-            commonSymptoms: patientData.commonSymptoms,
-            reproductiveHistory: patientData.reproductiveHistory,
-            lastVisaExamResults: patientData.lastVisaExamResults,
-            screeningStep: 'before-acetic',
-            doctor_id: currentDoctor.id
-          };
-          
-          const { data: newPatient, error } = await createPatient(patientToCreate);
-          
-          if (error || !newPatient) {
-            throw new Error(error?.message || 'Failed to create patient');
-          }
-          
-          localStorage.setItem('currentPatient', JSON.stringify({
-            ...newPatient,
-            sociodemographicData: `Education: ${patientData.education}, Occupation: ${patientData.occupation}, Marital Status: ${patientData.maritalStatus}`,
-            medicalHistory: `Existing Conditions: ${patientData.existingConditions.join(', ')}`,
-            lifestyleFactors: `Smoking: ${patientData.smokingStatus}, Alcohol: ${patientData.alcoholUse}, Physical Activity: ${patientData.physicalActivity}`,
-            symptoms: patientData.commonSymptoms.join(', ')
-          }));
-          
-          navigate('/camera');
-        } catch (error) {
-          console.error('Error saving patient:', error);
-          toast({
-            title: "Failed to save patient",
-            description: error.message || "There was an error saving the patient data",
-            variant: "destructive",
-          });
-        } finally {
-          setIsSubmitting(false);
-        }
+        localStorage.setItem('currentPatient', JSON.stringify(storageData));
+        navigate('/camera');
       } else {
         setCurrentStep(prev => prev + 1);
       }
