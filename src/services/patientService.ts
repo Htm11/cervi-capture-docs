@@ -1,6 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 export interface Patient {
   id?: string;
@@ -11,11 +11,9 @@ export interface Patient {
   contact_number?: string;
   email?: string;
   medical_history?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-export const getPatients = async (doctorId: string): Promise<Patient[]> => {
+export const getPatients = async (): Promise<Patient[]> => {
   try {
     if (!supabase) {
       console.error('Supabase client is not initialized');
@@ -25,7 +23,6 @@ export const getPatients = async (doctorId: string): Promise<Patient[]> => {
     const { data, error } = await supabase
       .from('patients')
       .select('*')
-      .eq('doctor_id', doctorId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -36,6 +33,11 @@ export const getPatients = async (doctorId: string): Promise<Patient[]> => {
     return data || [];
   } catch (error) {
     console.error('Error in getPatients:', error);
+    toast({
+      title: "Error fetching patients",
+      description: "Could not retrieve patient data. Please try again later.",
+      variant: "destructive",
+    });
     return [];
   }
 };
@@ -61,6 +63,11 @@ export const getPatient = async (patientId: string): Promise<Patient | null> => 
     return data;
   } catch (error) {
     console.error('Error in getPatient:', error);
+    toast({
+      title: "Error fetching patient",
+      description: "Could not retrieve the patient data. Please try again later.",
+      variant: "destructive",
+    });
     return null;
   }
 };
@@ -70,12 +77,6 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
     if (!supabase) {
       console.error('Supabase client is not initialized');
       return null;
-    }
-
-    // Ensure patient has required fields
-    if (!patient.first_name || !patient.last_name || !patient.date_of_birth || !patient.doctor_id) {
-      console.error('Missing required patient fields');
-      throw new Error('First name, last name, date of birth, and doctor ID are required');
     }
 
     const { data, error } = await supabase
@@ -89,10 +90,19 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
       throw error;
     }
 
-    console.log('Patient created successfully:', data);
+    toast({
+      title: "Patient created",
+      description: `${patient.first_name} ${patient.last_name} was successfully added.`,
+    });
+
     return data;
   } catch (error) {
     console.error('Error in createPatient:', error);
+    toast({
+      title: "Error creating patient",
+      description: "Could not create patient. Please try again later.",
+      variant: "destructive",
+    });
     return null;
   }
 };
@@ -116,9 +126,19 @@ export const updatePatient = async (patientId: string, updates: Partial<Patient>
       throw error;
     }
 
+    toast({
+      title: "Patient updated",
+      description: "Patient information was successfully updated.",
+    });
+
     return data;
   } catch (error) {
     console.error('Error in updatePatient:', error);
+    toast({
+      title: "Error updating patient",
+      description: "Could not update patient information. Please try again later.",
+      variant: "destructive",
+    });
     return null;
   }
 };
@@ -140,9 +160,19 @@ export const deletePatient = async (patientId: string): Promise<boolean> => {
       throw error;
     }
 
+    toast({
+      title: "Patient deleted",
+      description: "Patient was successfully removed from your records.",
+    });
+
     return true;
   } catch (error) {
     console.error('Error in deletePatient:', error);
+    toast({
+      title: "Error deleting patient",
+      description: "Could not delete patient. Please try again later.",
+      variant: "destructive",
+    });
     return false;
   }
 };

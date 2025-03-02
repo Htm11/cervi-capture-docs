@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -28,14 +29,17 @@ const Feedback = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [resultSaved, setResultSaved] = useState<boolean>(false);
   
+  // Animation state
   const [showAnimation, setShowAnimation] = useState(true);
   
+  // Check authentication
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     
+    // Get captured images from local storage
     const beforeAceticImage = localStorage.getItem('beforeAceticImage');
     const afterAceticImage = localStorage.getItem('afterAceticImage');
     
@@ -52,14 +56,18 @@ const Feedback = () => {
     setBeforeImage(beforeAceticImage);
     setAfterImage(afterAceticImage);
     
+    // Get patient data from local storage
     const patientDataString = localStorage.getItem('currentPatient');
     if (patientDataString) {
       setPatientData(JSON.parse(patientDataString));
     }
     
+    // Simulate analysis result - in real app, this would come from an API
+    // For demo purposes, randomly set as positive or negative
     const result = Math.random() > 0.5 ? 'positive' : 'negative';
     setAnalysisResult(result);
     
+    // Save result to patient data
     if (patientDataString) {
       const patient = JSON.parse(patientDataString);
       const updatedPatient = {
@@ -70,15 +78,19 @@ const Feedback = () => {
         afterAceticImage: afterAceticImage
       };
       
+      // Save updated patient data
       localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
       
+      // Use the helper function to save to results history
       saveResultToHistory(updatedPatient);
       
+      // Dispatch storage event to notify other tabs/windows
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'resultsHistory'
       }));
     }
     
+    // Hide animation after delay
     const timer = setTimeout(() => {
       setShowAnimation(false);
     }, 2500);
@@ -86,6 +98,7 @@ const Feedback = () => {
     return () => clearTimeout(timer);
   }, [isAuthenticated, navigate, toast]);
   
+  // Save result to Supabase
   const saveToDatabase = async () => {
     if (!currentDoctor || !patientData || !beforeImage || !afterImage || !analysisResult) {
       toast({
@@ -96,39 +109,32 @@ const Feedback = () => {
       return;
     }
     
-    if (!patientData.id || patientData.id === 'temp-patient-id') {
-      toast({
-        title: "Invalid patient ID",
-        description: "Please register the patient before saving results to the database",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsSaving(true);
     
     try {
+      // First upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
         beforeImage,
         currentDoctor.id,
-        patientData.id,
+        patientData.id || 'temp-patient-id',
         'before'
       );
       
       const afterImageUrl = await uploadScreeningImage(
         afterImage,
         currentDoctor.id,
-        patientData.id,
+        patientData.id || 'temp-patient-id',
         'after'
       );
       
+      // Then save the screening result to the database
       const screeningResult = {
-        patient_id: patientData.id,
+        patient_id: patientData.id || 'temp-patient-id',
         doctor_id: currentDoctor.id,
         before_image_url: beforeImageUrl,
         after_image_url: afterImageUrl,
         result: analysisResult,
-        confidence: 0.85,
+        confidence: 0.85, // Mock confidence value
         notes: `Screening performed on ${new Date().toLocaleDateString()}`
       };
       
@@ -156,17 +162,21 @@ const Feedback = () => {
   };
   
   const handleNewScan = () => {
+    // Clear current patient and images
     localStorage.removeItem('capturedImage');
     localStorage.removeItem('beforeAceticImage');
     localStorage.removeItem('afterAceticImage');
     localStorage.removeItem('currentPatient');
     
+    // Navigate to patient registration
     navigate('/patient-registration');
   };
   
   const handleTakeNewPhoto = () => {
+    // Clear only the after acetic acid image
     localStorage.removeItem('afterAceticImage');
     
+    // Update patient data to go back to after acetic step
     if (patientData) {
       const updatedPatientData = {
         ...patientData,
@@ -175,6 +185,7 @@ const Feedback = () => {
       localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
     }
     
+    // Navigate back to camera
     navigate('/camera');
   };
   
@@ -183,7 +194,7 @@ const Feedback = () => {
       <div className="flex flex-col items-center justify-center h-full">
         <Stepper 
           steps={steps} 
-          currentStep={5}
+          currentStep={5} // Set to a number beyond the last step to mark all as completed
           className="mb-6"
         />
 
@@ -234,6 +245,7 @@ const Feedback = () => {
                 </div>
               </div>
               
+              {/* Analysis Results */}
               <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
                 <h2 className="text-lg font-medium mb-3">Analysis Results</h2>
                 
@@ -257,6 +269,7 @@ const Feedback = () => {
                   <p>Analysis pending...</p>
                 )}
                 
+                {/* Database Save Status */}
                 <div className="mt-4">
                   {!resultSaved ? (
                     <Button 
