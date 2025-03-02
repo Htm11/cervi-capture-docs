@@ -270,6 +270,11 @@ const PatientRegistration = () => {
         }
       };
       
+      // Log the medical history data to verify structure
+      console.log('Medical history being saved:', JSON.stringify(medicalHistoryJSON, null, 2));
+      console.log('Medical conditions:', patientData.existingConditions);
+      console.log('Symptoms:', patientData.commonSymptoms);
+      
       const newPatient = {
         doctor_id: currentDoctor.id,
         first_name: patientData.firstName,

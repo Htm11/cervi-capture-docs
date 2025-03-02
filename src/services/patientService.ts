@@ -91,12 +91,27 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
     }
 
     // Ensure medical_history is a valid JSON object if it exists
-    if (patient.medical_history && typeof patient.medical_history === 'string') {
-      try {
-        patient.medical_history = JSON.parse(patient.medical_history);
-      } catch (e) {
-        console.warn('Could not parse medical_history as JSON, saving as object with text property');
-        patient.medical_history = { text: patient.medical_history };
+    if (patient.medical_history) {
+      // If it's a string, try to parse it as JSON
+      if (typeof patient.medical_history === 'string') {
+        try {
+          patient.medical_history = JSON.parse(patient.medical_history);
+        } catch (e) {
+          console.warn('Could not parse medical_history as JSON, saving as object with text property');
+          patient.medical_history = { text: patient.medical_history };
+        }
+      }
+      
+      // Log the medical history to validate data structure before saving
+      console.log('Medical history to be saved:', JSON.stringify(patient.medical_history, null, 2));
+      
+      // Ensure conditions and symptoms are properly structured
+      if (patient.medical_history.medical && Array.isArray(patient.medical_history.medical.conditions)) {
+        console.log('Conditions found:', patient.medical_history.medical.conditions);
+      }
+      
+      if (patient.medical_history.medical && Array.isArray(patient.medical_history.medical.symptoms)) {
+        console.log('Symptoms found:', patient.medical_history.medical.symptoms);
       }
     }
 
@@ -136,12 +151,27 @@ export const updatePatient = async (patientId: string, updates: Partial<Patient>
     }
 
     // Ensure medical_history is a valid JSON object if it exists
-    if (updates.medical_history && typeof updates.medical_history === 'string') {
-      try {
-        updates.medical_history = JSON.parse(updates.medical_history);
-      } catch (e) {
-        console.warn('Could not parse medical_history as JSON, saving as object with text property');
-        updates.medical_history = { text: updates.medical_history };
+    if (updates.medical_history) {
+      // If it's a string, try to parse it as JSON
+      if (typeof updates.medical_history === 'string') {
+        try {
+          updates.medical_history = JSON.parse(updates.medical_history);
+        } catch (e) {
+          console.warn('Could not parse medical_history as JSON, saving as object with text property');
+          updates.medical_history = { text: updates.medical_history };
+        }
+      }
+      
+      // Log the medical history to validate data structure before updating
+      console.log('Medical history to be updated:', JSON.stringify(updates.medical_history, null, 2));
+      
+      // Ensure conditions and symptoms are properly structured
+      if (updates.medical_history.medical && Array.isArray(updates.medical_history.medical.conditions)) {
+        console.log('Conditions found:', updates.medical_history.medical.conditions);
+      }
+      
+      if (updates.medical_history.medical && Array.isArray(updates.medical_history.medical.symptoms)) {
+        console.log('Symptoms found:', updates.medical_history.medical.symptoms);
       }
     }
 
