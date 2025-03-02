@@ -1,3 +1,4 @@
+<lov-code>
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Camera, ArrowLeft, ArrowRight, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -29,11 +31,43 @@ interface PatientData {
   countryCode: string;
   phoneNumber: string;
   dateOfBirth: Date | undefined;
-  sociodemographicData: string;
-  reproductiveHistory: string;
-  medicalHistory: string;
-  lifestyleFactors: string;
-  symptoms: string;
+  
+  // Updated medical information structure
+  sociodemographicData: {
+    education: string;
+    occupation: string;
+    maritalStatus: string;
+    livingArrangement: string;
+  };
+  
+  reproductiveHistory: {
+    pregnancies: string;
+    births: string;
+    abortions: string;
+    lastMenstrualPeriod: string;
+    contraceptiveUse: string;
+    contraceptiveType: string;
+  };
+  
+  medicalHistory: {
+    existingConditions: string[];
+    medications: string;
+    allergies: string;
+    previousSurgeries: string;
+    familyHistory: string[];
+  };
+  
+  lifestyleFactors: {
+    smokingStatus: string;
+    smokingFrequency: string;
+    alcoholUse: string;
+    alcoholFrequency: string;
+    physicalActivity: string;
+    diet: string[];
+  };
+  
+  symptoms: string[];
+  lastVisaExamDate: string;
   lastVisaExamResults: string;
 }
 
@@ -241,6 +275,55 @@ const countryCodes = [
   { code: "+998", country: "Uzbekistan" },
 ];
 
+// Medical form options
+const educationLevels = [
+  "None", "Primary", "Secondary", "Tertiary", "University", "Postgraduate"
+];
+
+const maritalStatusOptions = [
+  "Single", "Married", "Divorced", "Widowed", "Separated", "Partnered"
+];
+
+const livingArrangementOptions = [
+  "Alone", "With family", "With partner", "With roommates", "Assisted living", "Other"
+];
+
+const contraceptiveOptions = [
+  "None", "Oral contraceptives", "IUD", "Implant", "Injection", "Condoms", 
+  "Diaphragm", "Rhythm method", "Sterilization", "Other"
+];
+
+const medicalConditions = [
+  "Diabetes", "Hypertension", "Heart disease", "Asthma", "Cancer", 
+  "Thyroid disorder", "Kidney disease", "Liver disease", "Autoimmune disease",
+  "HIV/AIDS", "Hepatitis", "Sexually transmitted infection", "Mental health condition",
+  "Neurological disorder", "None"
+];
+
+const familyHistoryConditions = [
+  "Cancer", "Diabetes", "Heart disease", "Hypertension", "Stroke", 
+  "Genetic disorders", "Autoimmune diseases", "None"
+];
+
+const dietaryOptions = [
+  "Balanced diet", "High protein", "Vegetarian", "Vegan", "Gluten-free",
+  "Lactose-free", "Low carb", "High carb", "Keto", "Paleo", "Other"
+];
+
+const commonSymptoms = [
+  "None", "Abnormal vaginal bleeding", "Pelvic pain", "Vaginal discharge",
+  "Pain during intercourse", "Post-coital bleeding", "Lower back pain",
+  "Urinary problems", "Itching", "Burning sensation", "Weight loss", "Fatigue"
+];
+
+const frequencyOptions = [
+  "None", "Rarely", "Occasionally", "Regularly", "Daily", "Multiple times daily"
+];
+
+const physicalActivityOptions = [
+  "None", "Light (1-2 days/week)", "Moderate (3-4 days/week)", "Active (5-7 days/week)", "Very active"
+];
+
 const PatientRegistration = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -253,11 +336,43 @@ const PatientRegistration = () => {
     countryCode: '+1', // Default to US/Canada
     phoneNumber: '',
     dateOfBirth: undefined,
-    sociodemographicData: '',
-    reproductiveHistory: '',
-    medicalHistory: '',
-    lifestyleFactors: '',
-    symptoms: '',
+    
+    // Initialize structured medical data
+    sociodemographicData: {
+      education: '',
+      occupation: '',
+      maritalStatus: '',
+      livingArrangement: ''
+    },
+    
+    reproductiveHistory: {
+      pregnancies: '',
+      births: '',
+      abortions: '',
+      lastMenstrualPeriod: '',
+      contraceptiveUse: 'No',
+      contraceptiveType: ''
+    },
+    
+    medicalHistory: {
+      existingConditions: [],
+      medications: '',
+      allergies: '',
+      previousSurgeries: '',
+      familyHistory: []
+    },
+    
+    lifestyleFactors: {
+      smokingStatus: 'No',
+      smokingFrequency: '',
+      alcoholUse: 'No',
+      alcoholFrequency: '',
+      physicalActivity: '',
+      diet: []
+    },
+    
+    symptoms: [],
+    lastVisaExamDate: '',
     lastVisaExamResults: ''
   });
 
@@ -295,6 +410,108 @@ const PatientRegistration = () => {
     setYearView(false); // Reset to day view after selecting a date
   };
 
+  // New handlers for structured data
+  const handleSociodemographicChange = (field: string, value: string) => {
+    setPatientData(prev => ({
+      ...prev,
+      sociodemographicData: {
+        ...prev.sociodemographicData,
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleReproductiveHistoryChange = (field: string, value: string) => {
+    setPatientData(prev => ({
+      ...prev,
+      reproductiveHistory: {
+        ...prev.reproductiveHistory,
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleMedicalHistoryChange = (field: string, value: string) => {
+    setPatientData(prev => ({
+      ...prev,
+      medicalHistory: {
+        ...prev.medicalHistory,
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleExistingConditionsChange = (condition: string, checked: boolean) => {
+    setPatientData(prev => {
+      const newConditions = checked
+        ? [...prev.medicalHistory.existingConditions, condition]
+        : prev.medicalHistory.existingConditions.filter(c => c !== condition);
+      
+      return {
+        ...prev,
+        medicalHistory: {
+          ...prev.medicalHistory,
+          existingConditions: newConditions
+        }
+      };
+    });
+  };
+  
+  const handleFamilyHistoryChange = (condition: string, checked: boolean) => {
+    setPatientData(prev => {
+      const newConditions = checked
+        ? [...prev.medicalHistory.familyHistory, condition]
+        : prev.medicalHistory.familyHistory.filter(c => c !== condition);
+      
+      return {
+        ...prev,
+        medicalHistory: {
+          ...prev.medicalHistory,
+          familyHistory: newConditions
+        }
+      };
+    });
+  };
+  
+  const handleLifestyleChange = (field: string, value: string) => {
+    setPatientData(prev => ({
+      ...prev,
+      lifestyleFactors: {
+        ...prev.lifestyleFactors,
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleDietChange = (diet: string, checked: boolean) => {
+    setPatientData(prev => {
+      const newDiet = checked
+        ? [...prev.lifestyleFactors.diet, diet]
+        : prev.lifestyleFactors.diet.filter(d => d !== diet);
+      
+      return {
+        ...prev,
+        lifestyleFactors: {
+          ...prev.lifestyleFactors,
+          diet: newDiet
+        }
+      };
+    });
+  };
+  
+  const handleSymptomsChange = (symptom: string, checked: boolean) => {
+    setPatientData(prev => {
+      const newSymptoms = checked
+        ? [...prev.symptoms, symptom]
+        : prev.symptoms.filter(s => s !== symptom);
+      
+      return {
+        ...prev,
+        symptoms: newSymptoms
+      };
+    });
+  };
+
   const validateStep = (step: number): boolean => {
     const newErrors: FormErrors = {};
     
@@ -327,13 +544,15 @@ const PatientRegistration = () => {
   const handleNext = () => {
     if (validateStep(currentStep)) {
       if (currentStep === 2) {
-        // Save patient data before proceeding to camera step
-        localStorage.setItem('currentPatient', JSON.stringify({
+        // Prepare patient data for storage
+        const patientDataForStorage = {
           ...patientData,
           screeningStep: 'before-acetic',
-          // Combine country code and phone number for storage
           phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`
-        }));
+        };
+        
+        // Convert structured data to string for compatibility with existing code
+        localStorage.setItem('currentPatient', JSON.stringify(patientDataForStorage));
         navigate('/camera');
       } else {
         setCurrentStep(prev => prev + 1);
@@ -511,174 +730,64 @@ const PatientRegistration = () => {
         );
       case 2:
         return (
-          <section className="bg-white rounded-xl p-6 shadow-sm">
+          <section className="bg-white rounded-xl p-6 shadow-sm max-h-[80vh] overflow-y-auto">
             <h2 className="text-lg font-medium mb-4">Medical Information</h2>
-            <div className="space-y-4">
-              <FormField
-                id="sociodemographicData"
-                label="Sociodemographic Data"
-                multiline
-                placeholder="Enter sociodemographic information"
-                value={patientData.sociodemographicData}
-                onChange={handleChange}
-              />
-              
-              <FormField
-                id="reproductiveHistory"
-                label="Reproductive History"
-                multiline
-                placeholder="Enter reproductive history"
-                value={patientData.reproductiveHistory}
-                onChange={handleChange}
-              />
-              
-              <FormField
-                id="medicalHistory"
-                label="Medical History"
-                multiline
-                placeholder="Enter medical history"
-                value={patientData.medicalHistory}
-                onChange={handleChange}
-              />
-              
-              <FormField
-                id="lifestyleFactors"
-                label="Lifestyle Factors"
-                multiline
-                placeholder="Enter lifestyle factors"
-                value={patientData.lifestyleFactors}
-                onChange={handleChange}
-              />
-              
-              <FormField
-                id="symptoms"
-                label="Symptoms (if any)"
-                multiline
-                placeholder="Enter symptoms"
-                value={patientData.symptoms}
-                onChange={handleChange}
-              />
-              
-              <FormField
-                id="lastVisaExamResults"
-                label="Last Visa Exam Results"
-                multiline
-                placeholder="Enter results from the last visa exam"
-                value={patientData.lastVisaExamResults}
-                onChange={handleChange}
-              />
-            </div>
             
-            <div className="mt-6 space-y-4">
-              <div className="flex items-start space-x-3">
-                <Checkbox 
-                  id="confirmVerified" 
-                  checked={confirmVerified} 
-                  onCheckedChange={(checked) => {
-                    setConfirmVerified(checked as boolean);
-                    if (checked && errors.confirmVerified) {
-                      setErrors(prev => ({ ...prev, confirmVerified: '' }));
-                    }
-                  }}
-                />
-                <div className="space-y-1">
-                  <Label 
-                    htmlFor="confirmVerified" 
-                    className="text-sm font-medium"
+            {/* Sociodemographic Data */}
+            <div className="mb-6">
+              <h3 className="text-md font-medium mb-3">Sociodemographic Data</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education Level</Label>
+                  <Select 
+                    value={patientData.sociodemographicData.education} 
+                    onValueChange={(value) => handleSociodemographicChange('education', value)}
                   >
-                    I confirm that all patient information has been verified
-                  </Label>
-                  {errors.confirmVerified && <p className="text-destructive text-xs">{errors.confirmVerified}</p>}
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select education level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {educationLevels.map((level) => (
+                        <SelectItem key={level} value={level}>{level}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <Checkbox 
-                  id="confirmInformed" 
-                  checked={confirmInformed} 
-                  onCheckedChange={(checked) => {
-                    setConfirmInformed(checked as boolean);
-                    if (checked && errors.confirmInformed) {
-                      setErrors(prev => ({ ...prev, confirmInformed: '' }));
-                    }
-                  }}
-                />
-                <div className="space-y-1">
-                  <Label 
-                    htmlFor="confirmInformed" 
-                    className="text-sm font-medium"
+                
+                <div className="space-y-2">
+                  <Label htmlFor="occupation">Occupation</Label>
+                  <input
+                    id="occupation"
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter occupation"
+                    value={patientData.sociodemographicData.occupation}
+                    onChange={(e) => handleSociodemographicChange('occupation', e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="maritalStatus">Marital Status</Label>
+                  <Select 
+                    value={patientData.sociodemographicData.maritalStatus} 
+                    onValueChange={(value) => handleSociodemographicChange('maritalStatus', value)}
                   >
-                    I confirm that the patient has been informed about the procedure
-                  </Label>
-                  {errors.confirmInformed && <p className="text-destructive text-xs">{errors.confirmInformed}</p>}
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select marital status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {maritalStatusOptions.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            </div>
-          </section>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <Layout>
-      <div className="pb-16">
-        <Stepper 
-          steps={steps} 
-          currentStep={currentStep} 
-          onStepClick={handleStepClick}
-          className="mb-6"
-        />
-        
-        <form className="space-y-8">
-          {renderStepContent()}
-          
-          <div className="py-4 flex space-x-3">
-            {currentStep > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={handleBack}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
-              </Button>
-            )}
-            
-            <Button 
-              type="button"
-              className="flex-1 bg-cervi-500 hover:bg-cervi-600 text-white" 
-              onClick={handleNext}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {currentStep === 2 ? (
-                    <>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Proceed to Camera
-                    </>
-                  ) : (
-                    <>
-                      Next
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </Layout>
-  );
-};
-
-export default PatientRegistration;
+                
+                <div className="space-y-2">
+                  <Label htmlFor="livingArrangement">Living Arrangement</Label>
+                  <Select 
+                    value={patientData.sociodemographicData.livingArrangement} 
+                    onValueChange={(value) => handleSociodemographicChange('livingArrangement', value)}
+                  >
+                    <SelectTrigger>
+                      <Select
