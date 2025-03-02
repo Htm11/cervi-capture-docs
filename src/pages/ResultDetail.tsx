@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -111,41 +110,72 @@ const ResultDetail = () => {
     );
   }
   
-  // Function to format medical history data for display
   const formatMedicalHistory = (medicalHistoryData: string | null) => {
     if (!medicalHistoryData) return null;
     
     try {
-      // Try to parse as JSON if it's in JSON format
       const medicalHistory = typeof medicalHistoryData === 'string' 
         ? JSON.parse(medicalHistoryData) 
         : medicalHistoryData;
       
+      const renderNestedValue = (value: any): React.ReactNode => {
+        if (value === null || value === undefined) {
+          return "None";
+        } else if (Array.isArray(value)) {
+          return value.length > 0 ? value.join(', ') : "None";
+        } else if (typeof value === 'object') {
+          return (
+            <div className="pl-4 space-y-2 mt-2 text-sm">
+              {Object.entries(value).map(([nestedKey, nestedValue]) => {
+                if (nestedValue === null || nestedValue === undefined || 
+                   (Array.isArray(nestedValue) && nestedValue.length === 0)) {
+                  return null;
+                }
+                
+                const displayValue = typeof nestedValue === 'boolean'
+                  ? (nestedValue ? 'Yes' : 'No')
+                  : nestedValue;
+                
+                return (
+                  <div key={nestedKey} className="flex justify-between items-start">
+                    <span className="text-muted-foreground capitalize">{nestedKey.replace(/_/g, ' ')}</span>
+                    <span className="font-medium text-right max-w-[60%]">
+                      {typeof displayValue === 'object' ? renderNestedValue(displayValue) : String(displayValue)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        } else if (typeof value === 'boolean') {
+          return value ? 'Yes' : 'No';
+        } else {
+          return String(value);
+        }
+      };
+      
       return (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {Object.entries(medicalHistory).map(([sectionKey, sectionValue]) => {
-            // Skip rendering if sectionValue is null or undefined
             if (!sectionValue) return null;
             
             return (
               <div key={sectionKey} className="space-y-2">
-                <h3 className="text-sm font-semibold capitalize">{sectionKey}</h3>
+                <h3 className="text-sm font-semibold capitalize border-b pb-1">{sectionKey}</h3>
                 {typeof sectionValue === 'object' ? (
-                  <div className="pl-4 space-y-2">
+                  <div className="space-y-3">
                     {Object.entries(sectionValue as Record<string, any>).map(([key, value]) => {
-                      // Skip rendering if value is null, undefined, or empty array
                       if (value === null || value === undefined || 
-                         (Array.isArray(value) && value.length === 0)) return null;
+                         (Array.isArray(value) && value.length === 0)) {
+                        return null;
+                      }
                       
                       return (
-                        <div key={key} className="flex justify-between">
+                        <div key={key} className="flex justify-between items-start">
                           <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                          <span className="font-medium text-right">
-                            {Array.isArray(value) 
-                              ? value.join(', ') 
-                              : typeof value === 'object'
-                                ? JSON.stringify(value)
-                                : String(value)}
+                          <span className="font-medium text-right max-w-[60%]">
+                            {typeof value === 'object' ? renderNestedValue(value) : 
+                              typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
                           </span>
                         </div>
                       );
@@ -154,7 +184,9 @@ const ResultDetail = () => {
                 ) : (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground capitalize">{sectionKey.replace(/_/g, ' ')}</span>
-                    <span className="font-medium">{String(sectionValue)}</span>
+                    <span className="font-medium">
+                      {typeof sectionValue === 'boolean' ? (sectionValue ? 'Yes' : 'No') : String(sectionValue)}
+                    </span>
                   </div>
                 )}
               </div>
@@ -163,7 +195,6 @@ const ResultDetail = () => {
         </div>
       );
     } catch (e) {
-      // If not JSON, display as plain text
       console.error('Error formatting medical history:', e);
       return <p>{medicalHistoryData}</p>;
     }
