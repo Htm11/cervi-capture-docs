@@ -1,159 +1,19 @@
-import { supabase, executeSchemaSetup, testSupabaseConnection } from '@/lib/supabase';
+
+import { supabase } from '@/lib/supabase';
 import { Patient, ScreeningResult } from '@/types/patient';
-
-// Function to initialize database schema if needed
-export const initializeDatabaseSchema = async (): Promise<{ success: boolean, error?: string }> => {
-  try {
-    console.log("Checking and initializing database schema...");
-    
-    // First, test the connection
-    const connectionTest = await testSupabaseConnection();
-    
-    if (!connectionTest.success) {
-      console.error("Database connection failed:", connectionTest.error);
-      return { 
-        success: false, 
-        error: `Database connection error: ${connectionTest.error}` 
-      };
-    }
-    
-    if (connectionTest.needsSetup) {
-      console.log("Database needs setup, creating tables...");
-      
-      // Try to execute the schema setup using our direct SQL executor
-      const setupResult = await executeSchemaSetup();
-      
-      if (!setupResult.success) {
-        console.log("Schema setup using SQL failed, trying alternative approach...");
-        return await createTablesDirectly();
-      }
-      
-      return { success: true };
-    }
-    
-    console.log("Database already set up correctly");
-    return { success: true };
-  } catch (error) {
-    console.error("Error initializing database schema:", error);
-    
-    // Try alternative approach
-    return await createTablesDirectly();
-  }
-};
-
-// Fallback method to create tables directly via inserts
-const createTablesDirectly = async (): Promise<{ success: boolean, error?: string }> => {
-  try {
-    console.log("Attempting direct table creation via inserts...");
-    
-    // Try to create patients table by inserting a test record
-    const { error: patientError } = await supabase
-      .from('patients')
-      .insert({
-        firstName: 'Test',
-        lastName: 'User',
-        phoneNumber: '1234567890',
-        doctor_id: '00000000-0000-0000-0000-000000000000',
-        screeningStep: 'completed'
-      })
-      .select('id')
-      .single();
-    
-    // If there's an error that's not just a constraint violation, the table might not exist
-    if (patientError && patientError.code !== '23505') {
-      console.error("Error with patients table:", patientError);
-      return { 
-        success: false, 
-        error: "Could not create or access patients table. Please contact support or manually run the SQL setup script." 
-      };
-    }
-    
-    // Try to create screening_results table by inserting a test record
-    const { error: resultError } = await supabase
-      .from('screening_results')
-      .insert({
-        patient_id: '00000000-0000-0000-0000-000000000000',
-        doctor_id: '00000000-0000-0000-0000-000000000000',
-        analysisResult: 'negative'
-      })
-      .select('id')
-      .single();
-    
-    if (resultError && resultError.code !== '23505') {
-      console.error("Error with screening_results table:", resultError);
-      return { 
-        success: false, 
-        error: "Could not create or access screening_results table. Please contact support or manually run the SQL setup script." 
-      };
-    }
-    
-    // Try to create storage bucket
-    try {
-      const { error: bucketError } = await supabase.storage.createBucket('cervical_images', {
-        public: true
-      });
-      
-      if (bucketError && bucketError.status !== 409) { // 409 means it already exists
-        console.warn("Warning creating storage bucket:", bucketError);
-      }
-    } catch (storageError) {
-      console.warn("Warning creating storage bucket:", storageError);
-      // Continue anyway, this is not critical
-    }
-    
-    console.log("Direct table creation completed");
-    return { success: true };
-  } catch (error) {
-    console.error("Error in direct table creation:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error 
-        ? `Database setup failed: ${error.message}` 
-        : "Database setup failed with unknown error" 
-    };
-  }
-};
+import { useAuth } from '@/context/AuthContext';
 
 // Patient CRUD operations
 export const createPatient = async (patientData: Patient): Promise<{ data: Patient | null, error: any }> => {
   try {
-    console.log("Creating patient with data:", patientData);
-    
-    // Validate required fields
-    if (!patientData.firstName || !patientData.lastName || !patientData.phoneNumber || !patientData.doctor_id) {
-      console.error("Missing required fields for patient creation");
-      return { 
-        data: null, 
-        error: new Error("Missing required fields: firstName, lastName, phoneNumber and doctor_id are required") 
-      };
-    }
-    
-    // Check if 'patients' table exists
-    const { data: tableExists, error: tableError } = await supabase
-      .from('patients')
-      .select('id')
-      .limit(1);
-      
-    if (tableError && tableError.code === '42P01') {
-      console.error("Table 'patients' does not exist:", tableError);
-      return { 
-        data: null, 
-        error: new Error("Table 'patients' does not exist. Please ensure database tables are created.") 
-      };
-    }
-    
     const { data, error } = await supabase
       .from('patients')
       .insert([patientData])
       .select()
       .single();
       
-    if (error) {
-      console.error("Supabase error creating patient:", error);
-      return { data: null, error };
-    }
+    if (error) throw error;
     
-    console.log("Patient created successfully:", data);
     return { data, error: null };
   } catch (error) {
     console.error('Error creating patient:', error);
@@ -323,9 +183,6 @@ export const uploadImage = async (
 // Migration helper - for migrating from localStorage to Supabase
 export const migrateLocalStorageToSupabase = async (doctorId: string): Promise<boolean> => {
   try {
-    // Ensure the database schema exists
-    await initializeDatabaseSchema();
-    
     // Get results history from localStorage
     const storedResults = localStorage.getItem('resultsHistory');
     if (!storedResults) return true; // Nothing to migrate
@@ -333,74 +190,56 @@ export const migrateLocalStorageToSupabase = async (doctorId: string): Promise<b
     const resultsHistory = JSON.parse(storedResults);
     if (!Array.isArray(resultsHistory) || resultsHistory.length === 0) return true;
     
-    console.log("Starting migration of", resultsHistory.length, "records to Supabase");
-    
     // For each result, create a patient and screening result
     for (const result of resultsHistory) {
-      try {
-        // Create patient record
-        const patientData: Patient = {
-          firstName: result.firstName,
-          lastName: result.lastName,
-          phoneNumber: result.phoneNumber,
-          dateOfBirth: result.dateOfBirth || undefined,
-          doctor_id: doctorId,
-          screeningStep: 'completed'
-        };
-        
-        console.log("Creating patient with data:", patientData);
-        
-        const { data: patientRecord, error: patientError } = await createPatient(patientData);
-        if (patientError || !patientRecord) {
-          console.error("Error creating patient during migration:", patientError);
-          continue;
-        }
-        
-        console.log("Patient created successfully:", patientRecord);
-        
-        // Upload images if they exist
-        let beforeImageUrl = null;
-        let afterImageUrl = null;
-        
-        if (result.beforeAceticImage) {
-          const { url } = await uploadImage(
-            result.beforeAceticImage,
-            `${doctorId}/${patientRecord.id}/before-acetic-${new Date().getTime()}.jpg`
-          );
-          beforeImageUrl = url;
-        }
-        
-        if (result.afterAceticImage) {
-          const { url } = await uploadImage(
-            result.afterAceticImage,
-            `${doctorId}/${patientRecord.id}/after-acetic-${new Date().getTime()}.jpg`
-          );
-          afterImageUrl = url;
-        }
-        
-        // Create screening result
-        const screeningData: ScreeningResult = {
-          patient_id: patientRecord.id!,
-          doctor_id: doctorId,
-          analysisResult: result.analysisResult === 'positive' ? 'positive' : 'negative',
-          analysisDate: result.analysisDate || new Date().toISOString(),
-          beforeAceticImage: beforeImageUrl || undefined,
-          afterAceticImage: afterImageUrl || undefined
-        };
-        
-        const { error: screeningError } = await saveScreeningResult(screeningData);
-        if (screeningError) {
-          console.error("Error saving screening result during migration:", screeningError);
-        }
-      } catch (recordError) {
-        console.error("Error processing record during migration:", recordError);
-        // Continue with next record
+      // Create patient record
+      const patientData: Patient = {
+        firstName: result.firstName,
+        lastName: result.lastName,
+        phoneNumber: result.phoneNumber,
+        dateOfBirth: result.dateOfBirth || undefined,
+        doctor_id: doctorId,
+        screeningStep: 'completed'
+      };
+      
+      const { data: patientRecord, error: patientError } = await createPatient(patientData);
+      if (patientError || !patientRecord) continue;
+      
+      // Upload images if they exist
+      let beforeImageUrl = null;
+      let afterImageUrl = null;
+      
+      if (result.beforeAceticImage) {
+        const { url } = await uploadImage(
+          result.beforeAceticImage,
+          `${doctorId}/${patientRecord.id}/before-acetic-${new Date().getTime()}.jpg`
+        );
+        beforeImageUrl = url;
       }
+      
+      if (result.afterAceticImage) {
+        const { url } = await uploadImage(
+          result.afterAceticImage,
+          `${doctorId}/${patientRecord.id}/after-acetic-${new Date().getTime()}.jpg`
+        );
+        afterImageUrl = url;
+      }
+      
+      // Create screening result
+      const screeningData: ScreeningResult = {
+        patient_id: patientRecord.id!,
+        doctor_id: doctorId,
+        analysisResult: result.analysisResult,
+        analysisDate: result.analysisDate || new Date().toISOString(),
+        beforeAceticImage: beforeImageUrl || undefined,
+        afterAceticImage: afterImageUrl || undefined
+      };
+      
+      await saveScreeningResult(screeningData);
     }
     
     // Clear localStorage after successful migration
     localStorage.removeItem('resultsHistory');
-    console.log("Migration completed and localStorage cleared");
     return true;
   } catch (error) {
     console.error('Migration error:', error);
