@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -8,8 +7,123 @@ import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import { saveResultToHistory } from '@/pages/Results';
-import { uploadScreeningImage, saveScreeningResult, ensurePatientExists } from '@/services/screeningService';
+import { ensurePatientExists } from '@/services/screeningService';
+import { uploadScreeningImage, saveScreeningResult, verifyPatientExists } from '@/services/ResultsService';
+import { isValidUUID } from '@/utils/ImageUtils';
 
+// Component for displaying success animation
+const AnalysisCompleteAnimation = () => (
+  <div className="flex flex-col items-center justify-center p-6 animate-scale-in">
+    <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
+      <CheckCircle className="h-12 w-12 text-green-600" />
+    </div>
+    <h2 className="text-2xl font-semibold text-center mb-2">Analysis Complete</h2>
+    <p className="text-center text-muted-foreground">
+      Your images have been analyzed and meet the quality requirements
+    </p>
+  </div>
+);
+
+// Component for displaying the patient information card
+const PatientInfoCard = ({ patientData }: { patientData: any }) => (
+  <div className="bg-white rounded-xl p-4 shadow-sm">
+    <h2 className="text-lg font-medium mb-3">Patient Information</h2>
+    <p className="text-sm mb-1">
+      <span className="font-medium">Name:</span> {patientData.firstName} {patientData.lastName}
+    </p>
+    {patientData.dateOfBirth && (
+      <p className="text-sm mb-1">
+        <span className="font-medium">DOB:</span> {new Date(patientData.dateOfBirth).toLocaleDateString()}
+      </p>
+    )}
+    <p className="text-sm">
+      <span className="font-medium">Phone:</span> {patientData.phoneNumber}
+    </p>
+  </div>
+);
+
+// Component for displaying images
+const ImagesPreview = ({ beforeImage, afterImage }: { beforeImage: string | null, afterImage: string | null }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {beforeImage && (
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-cervi-700">Before Acetic Acid</p>
+        <div className="rounded-lg overflow-hidden border border-border">
+          <img 
+            src={beforeImage} 
+            alt="Before acetic acid" 
+            className="w-full object-contain max-h-[200px]"
+          />
+        </div>
+      </div>
+    )}
+    
+    {afterImage && (
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-cervi-700">After Acetic Acid</p>
+        <div className="rounded-lg overflow-hidden border border-border">
+          <img 
+            src={afterImage} 
+            alt="After acetic acid" 
+            className="w-full object-contain max-h-[200px]"
+          />
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+// Component for displaying analysis results
+const AnalysisResultCard = ({ 
+  analysisResult, 
+  isSaving, 
+  resultSaved 
+}: { 
+  analysisResult: 'positive' | 'negative' | null, 
+  isSaving: boolean, 
+  resultSaved: boolean 
+}) => (
+  <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+    <h2 className="text-lg font-medium mb-3">Analysis Results</h2>
+    
+    {analysisResult === 'positive' ? (
+      <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-100">
+        <XCircle className="h-6 w-6 text-red-500" />
+        <div>
+          <p className="font-medium text-red-800">Positive</p>
+          <p className="text-sm text-red-600">Abnormal cells detected. Further examination is recommended.</p>
+        </div>
+      </div>
+    ) : analysisResult === 'negative' ? (
+      <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-100">
+        <CheckCircle className="h-6 w-6 text-green-500" />
+        <div>
+          <p className="font-medium text-green-800">Negative</p>
+          <p className="text-sm text-green-600">No abnormal cells detected. Regular check-ups recommended.</p>
+        </div>
+      </div>
+    ) : (
+      <p>Analysis pending...</p>
+    )}
+    
+    {/* Database Save Status */}
+    <div className="mt-4">
+      {isSaving ? (
+        <div className="flex items-center space-x-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+          <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-blue-700">Saving result to database...</p>
+        </div>
+      ) : resultSaved ? (
+        <div className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg border border-green-100">
+          <CheckCircle className="h-5 w-5 text-green-500" />
+          <p className="text-sm text-green-700">Result saved to database</p>
+        </div>
+      ) : null}
+    </div>
+  </div>
+);
+
+// Steps for the stepper component
 const steps: Step[] = [
   { id: 1, label: "Basic Info" },
   { id: 2, label: "Medical Info" },
@@ -32,36 +146,59 @@ const Feedback = () => {
   // Animation state
   const [showAnimation, setShowAnimation] = useState(true);
   
-  // Check authentication
+  // Load and verify data
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    
-    // Get captured images from local storage
-    const beforeAceticImage = localStorage.getItem('beforeAceticImage');
-    const afterAceticImage = localStorage.getItem('afterAceticImage');
-    
-    if (!beforeAceticImage || !afterAceticImage) {
-      toast({
-        title: "Missing images",
-        description: "Please complete the imaging process first",
-        variant: "destructive",
-      });
-      navigate('/camera');
-      return;
-    }
-    
-    setBeforeImage(beforeAceticImage);
-    setAfterImage(afterAceticImage);
-    
-    // Get patient data from local storage
-    const patientDataString = localStorage.getItem('currentPatient');
-    if (patientDataString) {
+    const loadAndVerifyData = async () => {
+      // Check authentication
+      if (!isAuthenticated) {
+        navigate('/login');
+        return;
+      }
+      
+      // Get captured images from local storage
+      const beforeAceticImage = localStorage.getItem('beforeAceticImage');
+      const afterAceticImage = localStorage.getItem('afterAceticImage');
+      
+      if (!beforeAceticImage || !afterAceticImage) {
+        toast({
+          title: "Missing images",
+          description: "Please complete the imaging process first",
+          variant: "destructive",
+        });
+        navigate('/camera');
+        return;
+      }
+      
+      setBeforeImage(beforeAceticImage);
+      setAfterImage(afterAceticImage);
+      
+      // Get patient data from local storage
+      const patientDataString = localStorage.getItem('currentPatient');
+      if (!patientDataString) {
+        console.error("No patient data found in localStorage");
+        toast({
+          title: "Missing patient data",
+          description: "Please register a patient first",
+          variant: "destructive",
+        });
+        navigate('/patient-registration');
+        return;
+      }
+      
       try {
         const parsedData = JSON.parse(patientDataString);
         console.log("Loaded patient data:", parsedData);
+        
+        // Check if the patient ID is valid
+        if (parsedData.id && parsedData.id !== 'temp-patient-id' && isValidUUID(parsedData.id)) {
+          // Verify the patient exists in the database
+          const patientExists = await verifyPatientExists(parsedData.id);
+          if (!patientExists) {
+            console.warn("Patient ID in localStorage does not exist in database:", parsedData.id);
+            // We'll keep the patient data but update the ID later with ensurePatientExists
+          }
+        }
+        
         setPatientData(parsedData);
       } catch (error) {
         console.error("Error parsing patient data:", error);
@@ -70,61 +207,60 @@ const Feedback = () => {
           description: "Could not load patient information",
           variant: "destructive",
         });
+        return;
       }
-    } else {
-      console.error("No patient data found in localStorage");
-      toast({
-        title: "Missing patient data",
-        description: "Please register a patient first",
-        variant: "destructive",
-      });
-      navigate('/patient-registration');
-      return;
-    }
+      
+      // Simulate analysis result - in real app, this would come from an API
+      // For demo purposes, randomly set as positive or negative
+      const result = Math.random() > 0.5 ? 'positive' : 'negative';
+      setAnalysisResult(result);
+      
+      // Save result to patient data
+      if (patientDataString) {
+        const patient = JSON.parse(patientDataString);
+        const updatedPatient = {
+          ...patient,
+          analysisResult: result,
+          analysisDate: new Date().toISOString(),
+          beforeAceticImage: beforeAceticImage,
+          afterAceticImage: afterAceticImage
+        };
+        
+        // Save updated patient data
+        localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
+        
+        // Use the helper function to save to results history
+        saveResultToHistory(updatedPatient);
+        
+        // Dispatch storage event to notify other tabs/windows
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'resultsHistory'
+        }));
+      }
+    };
     
-    // Simulate analysis result - in real app, this would come from an API
-    // For demo purposes, randomly set as positive or negative
-    const result = Math.random() > 0.5 ? 'positive' : 'negative';
-    setAnalysisResult(result);
-    
-    // Save result to patient data
-    if (patientDataString) {
-      const patient = JSON.parse(patientDataString);
-      const updatedPatient = {
-        ...patient,
-        analysisResult: result,
-        analysisDate: new Date().toISOString(),
-        beforeAceticImage: beforeAceticImage,
-        afterAceticImage: afterAceticImage
-      };
-      
-      // Save updated patient data
-      localStorage.setItem('currentPatient', JSON.stringify(updatedPatient));
-      
-      // Use the helper function to save to results history
-      saveResultToHistory(updatedPatient);
-      
-      // Dispatch storage event to notify other tabs/windows
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'resultsHistory'
-      }));
-    }
+    loadAndVerifyData();
     
     // Hide animation after delay
     const timer = setTimeout(() => {
       setShowAnimation(false);
       
-      // Automatically save to database after analysis animation completes
-      if (currentDoctor && patientDataString && beforeAceticImage && afterAceticImage && result) {
+      // Automatically save to database after animation completes
+      if (currentDoctor && patientData && beforeImage && afterImage && analysisResult) {
         saveToDatabase();
       }
     }, 2500);
     
     return () => clearTimeout(timer);
-  }, [isAuthenticated, navigate, toast]);
-  
+  }, [isAuthenticated, navigate, toast, currentDoctor]);
+
   // Save result to Supabase
   const saveToDatabase = async () => {
+    if (resultSaved) {
+      console.log("Result already saved, skipping");
+      return;
+    }
+    
     if (!currentDoctor) {
       console.error("Missing doctor information");
       toast({
@@ -165,18 +301,11 @@ const Feedback = () => {
       return;
     }
     
-    // Check if we already saved this result
-    if (resultSaved) {
-      console.log("Result already saved, skipping");
-      return;
-    }
-    
     setIsSaving(true);
     
     try {
       console.log("Starting database save with patient data:", {
         doctorId: currentDoctor.id,
-        patientId: patientData.id,
         patientData: patientData,
         hasImages: !!beforeImage && !!afterImage,
         analysisResult
@@ -185,25 +314,31 @@ const Feedback = () => {
       // First ensure we have a valid patient ID
       let validPatientId;
       try {
+        // This will either verify the existing ID or create a new patient
         validPatientId = await ensurePatientExists(patientData, currentDoctor.id);
         
         if (!validPatientId) {
           throw new Error("Failed to get a valid patient ID");
         }
         
-        // Update local patientData with the valid ID to ensure it's used for uploads
-        setPatientData({
+        console.log("Got valid patient ID:", validPatientId);
+        
+        // Double check that the patient exists in the database
+        const patientExists = await verifyPatientExists(validPatientId);
+        if (!patientExists) {
+          throw new Error("Verified patient ID does not exist in database");
+        }
+        
+        // Update local patientData with the valid ID
+        const updatedPatientData = {
           ...patientData,
           id: validPatientId
-        });
+        };
+        
+        setPatientData(updatedPatientData);
         
         // Also update localStorage
-        localStorage.setItem('currentPatient', JSON.stringify({
-          ...patientData,
-          id: validPatientId
-        }));
-        
-        console.log("Got valid patient ID:", validPatientId);
+        localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
       } catch (error) {
         console.error("Failed to ensure patient exists:", error);
         toast({
@@ -215,7 +350,7 @@ const Feedback = () => {
         return;
       }
       
-      // Then upload the images to Supabase Storage
+      // Upload the images to Supabase Storage
       const beforeImageUrl = await uploadScreeningImage(
         beforeImage,
         currentDoctor.id,
@@ -236,7 +371,7 @@ const Feedback = () => {
       
       console.log("Uploaded images:", { beforeImageUrl, afterImageUrl });
       
-      // Then save the screening result to the database
+      // Save the screening result to the database
       const screeningResult = {
         patient_id: validPatientId,
         doctor_id: currentDoctor.id,
@@ -257,13 +392,6 @@ const Feedback = () => {
           title: "Result saved",
           description: "The screening result has been saved to the database",
         });
-        
-        // Update local storage with the valid patient ID for future reference
-        const updatedPatientData = {
-          ...patientData,
-          id: validPatientId
-        };
-        localStorage.setItem('currentPatient', JSON.stringify(updatedPatientData));
       } else {
         throw new Error('Failed to save result');
       }
@@ -317,13 +445,7 @@ const Feedback = () => {
         />
 
         {showAnimation ? (
-          <div className="flex flex-col items-center justify-center p-6 animate-scale-in">
-            <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
-              <CheckCircle className="h-12 w-12 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-semibold text-center mb-2">Analysis Complete</h2>
-            <p className="text-center text-muted-foreground">Your images have been analyzed and meet the quality requirements</p>
-          </div>
+          <AnalysisCompleteAnimation />
         ) : (
           <>
             <div className="w-full mb-6">
@@ -334,91 +456,17 @@ const Feedback = () => {
                   <span className="text-sm font-medium">Images meet quality requirements</span>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {beforeImage && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-cervi-700">Before Acetic Acid</p>
-                      <div className="rounded-lg overflow-hidden border border-border">
-                        <img 
-                          src={beforeImage} 
-                          alt="Before acetic acid" 
-                          className="w-full object-contain max-h-[200px]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {afterImage && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-cervi-700">After Acetic Acid</p>
-                      <div className="rounded-lg overflow-hidden border border-border">
-                        <img 
-                          src={afterImage} 
-                          alt="After acetic acid" 
-                          className="w-full object-contain max-h-[200px]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ImagesPreview beforeImage={beforeImage} afterImage={afterImage} />
               </div>
               
               {/* Analysis Results */}
-              <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-                <h2 className="text-lg font-medium mb-3">Analysis Results</h2>
-                
-                {analysisResult === 'positive' ? (
-                  <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-100">
-                    <XCircle className="h-6 w-6 text-red-500" />
-                    <div>
-                      <p className="font-medium text-red-800">Positive</p>
-                      <p className="text-sm text-red-600">Abnormal cells detected. Further examination is recommended.</p>
-                    </div>
-                  </div>
-                ) : analysisResult === 'negative' ? (
-                  <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                    <div>
-                      <p className="font-medium text-green-800">Negative</p>
-                      <p className="text-sm text-green-600">No abnormal cells detected. Regular check-ups recommended.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p>Analysis pending...</p>
-                )}
-                
-                {/* Database Save Status */}
-                <div className="mt-4">
-                  {isSaving ? (
-                    <div className="flex items-center space-x-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
-                      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm text-blue-700">Saving result to database...</p>
-                    </div>
-                  ) : resultSaved ? (
-                    <div className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg border border-green-100">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <p className="text-sm text-green-700">Result saved to database</p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <AnalysisResultCard 
+                analysisResult={analysisResult} 
+                isSaving={isSaving} 
+                resultSaved={resultSaved} 
+              />
               
-              {patientData && (
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <h2 className="text-lg font-medium mb-3">Patient Information</h2>
-                  <p className="text-sm mb-1">
-                    <span className="font-medium">Name:</span> {patientData.firstName} {patientData.lastName}
-                  </p>
-                  {patientData.dateOfBirth && (
-                    <p className="text-sm mb-1">
-                      <span className="font-medium">DOB:</span> {new Date(patientData.dateOfBirth).toLocaleDateString()}
-                    </p>
-                  )}
-                  <p className="text-sm">
-                    <span className="font-medium">Phone:</span> {patientData.phoneNumber}
-                  </p>
-                </div>
-              )}
+              {patientData && <PatientInfoCard patientData={patientData} />}
             </div>
             
             <div className="w-full space-y-3 mt-auto">
