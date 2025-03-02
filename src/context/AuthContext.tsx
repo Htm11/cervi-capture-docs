@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Doctor, AuthContextType } from '@/types/auth';
 import { loginUser, registerUser, logoutUser, checkSession } from '@/services/authService';
+import { initializeDatabase } from '@/lib/supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -20,6 +21,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userData) {
           setCurrentDoctor(userData);
           localStorage.setItem('cerviDoctor', JSON.stringify(userData));
+          
+          // Initialize database when user is authenticated
+          await initializeDatabase();
         }
       } catch (error) {
         console.error('Session initialization error:', error);
@@ -57,6 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setCurrentDoctor(doctor);
       localStorage.setItem('cerviDoctor', JSON.stringify(doctor));
+      
+      // Initialize database after successful login
+      await initializeDatabase();
       
       toast({
         title: "Login successful",
@@ -113,6 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (doctor) {
         setCurrentDoctor(doctor);
         localStorage.setItem('cerviDoctor', JSON.stringify(doctor));
+        
+        // Initialize database after successful registration
+        await initializeDatabase();
         
         toast({
           title: "Registration successful",
