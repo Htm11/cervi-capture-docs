@@ -23,7 +23,7 @@ const Layout = ({
   // Generate a unique key for page transitions based on the current route
   const pageKey = location.pathname;
   
-  // Hide bottom menu on login page or when we're on the patient registration page (since it has its own sticky nav)
+  // Hide bottom menu on login page
   const shouldShowBottomMenu = !hideBottomMenu && location.pathname !== '/login';
   
   return (
