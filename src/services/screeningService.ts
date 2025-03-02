@@ -1,21 +1,26 @@
 
 import { supabase } from '@/lib/supabase';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { Doctor } from '@/types/auth';
 
 export interface ScreeningResult {
   id?: string;
   patient_id: string;
   doctor_id: string;
-  image_url?: string;
-  result: string;
+  before_image_url?: string;
+  after_image_url?: string;
+  result: 'positive' | 'negative';
   confidence?: number;
   notes?: string;
+  created_at?: string;
 }
 
+// Upload an image to Supabase Storage
 export const uploadScreeningImage = async (
-  file: File,
+  imageBase64: string,
   doctorId: string,
-  patientId: string
+  patientId: string,
+  imageType: 'before' | 'after'
 ): Promise<string | null> => {
   try {
     if (!supabase) {
@@ -23,8 +28,15 @@ export const uploadScreeningImage = async (
       return null;
     }
 
-    const fileName = `${doctorId}/${patientId}/${Date.now()}_${file.name}`;
+    // Convert base64 to blob
+    const base64Data = imageBase64.split(',')[1];
+    const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
     
+    // Create a file from the blob
+    const fileName = `${doctorId}/${patientId}/${Date.now()}_${imageType}.jpg`;
+    const file = new File([blob], fileName, { type: 'image/jpeg' });
+    
+    // Upload to Supabase storage
     const { data, error } = await supabase
       .storage
       .from('cervical_images')
@@ -35,6 +47,7 @@ export const uploadScreeningImage = async (
       throw error;
     }
 
+    // Get the public URL
     const { data: urlData } = supabase
       .storage
       .from('cervical_images')
@@ -43,17 +56,14 @@ export const uploadScreeningImage = async (
     return urlData.publicUrl;
   } catch (error) {
     console.error('Error in uploadScreeningImage:', error);
-    toast({
-      title: "Error uploading image",
-      description: "Could not upload the screening image. Please try again later.",
-      variant: "destructive",
-    });
     return null;
   }
 };
 
+// Save screening result to the database
 export const saveScreeningResult = async (
-  result: ScreeningResult
+  result: ScreeningResult,
+  doctor: Doctor
 ): Promise<ScreeningResult | null> => {
   try {
     if (!supabase) {
@@ -61,9 +71,15 @@ export const saveScreeningResult = async (
       return null;
     }
 
+    // Ensure doctor_id is set to the current doctor
+    const resultWithDoctor = {
+      ...result,
+      doctor_id: doctor.id
+    };
+
     const { data, error } = await supabase
       .from('screening_results')
-      .insert(result)
+      .insert(resultWithDoctor)
       .select()
       .single();
 
@@ -72,23 +88,14 @@ export const saveScreeningResult = async (
       throw error;
     }
 
-    toast({
-      title: "Result saved",
-      description: "Screening result was successfully saved.",
-    });
-
     return data;
   } catch (error) {
     console.error('Error in saveScreeningResult:', error);
-    toast({
-      title: "Error saving result",
-      description: "Could not save the screening result. Please try again later.",
-      variant: "destructive",
-    });
     return null;
   }
 };
 
+// Get screening results for a specific patient
 export const getPatientScreeningResults = async (
   patientId: string
 ): Promise<ScreeningResult[]> => {
@@ -112,16 +119,14 @@ export const getPatientScreeningResults = async (
     return data || [];
   } catch (error) {
     console.error('Error in getPatientScreeningResults:', error);
-    toast({
-      title: "Error fetching results",
-      description: "Could not retrieve the screening results. Please try again later.",
-      variant: "destructive",
-    });
     return [];
   }
 };
 
-export const getAllScreeningResults = async (): Promise<ScreeningResult[]> => {
+// Get all screening results for the current doctor
+export const getDoctorScreeningResults = async (
+  doctorId: string
+): Promise<ScreeningResult[]> => {
   try {
     if (!supabase) {
       console.error('Supabase client is not initialized');
@@ -131,60 +136,17 @@ export const getAllScreeningResults = async (): Promise<ScreeningResult[]> => {
     const { data, error } = await supabase
       .from('screening_results')
       .select('*, patients!inner(*)')
+      .eq('doctor_id', doctorId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching all screening results:', error);
+      console.error('Error fetching doctor screening results:', error);
       throw error;
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error in getAllScreeningResults:', error);
-    toast({
-      title: "Error fetching results",
-      description: "Could not retrieve screening results. Please try again later.",
-      variant: "destructive",
-    });
+    console.error('Error in getDoctorScreeningResults:', error);
     return [];
-  }
-};
-
-export const updateScreeningResult = async (
-  resultId: string,
-  updates: Partial<ScreeningResult>
-): Promise<ScreeningResult | null> => {
-  try {
-    if (!supabase) {
-      console.error('Supabase client is not initialized');
-      return null;
-    }
-
-    const { data, error } = await supabase
-      .from('screening_results')
-      .update(updates)
-      .eq('id', resultId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating screening result:', error);
-      throw error;
-    }
-
-    toast({
-      title: "Result updated",
-      description: "Screening result was successfully updated.",
-    });
-
-    return data;
-  } catch (error) {
-    console.error('Error in updateScreeningResult:', error);
-    toast({
-      title: "Error updating result",
-      description: "Could not update the screening result. Please try again later.",
-      variant: "destructive",
-    });
-    return null;
   }
 };

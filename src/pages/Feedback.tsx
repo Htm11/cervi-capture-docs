@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,6 +8,7 @@ import { CheckCircle, Camera, Home, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Stepper, { Step } from '@/components/Stepper';
 import { saveResultToHistory } from './Results';
+import { uploadScreeningImage, saveScreeningResult } from '@/services/screeningService';
 
 const steps: Step[] = [
   { id: 1, label: "Basic Info" },
@@ -16,7 +18,7 @@ const steps: Step[] = [
 ];
 
 const Feedback = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -24,6 +26,8 @@ const Feedback = () => {
   const [afterImage, setAfterImage] = useState<string | null>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [analysisResult, setAnalysisResult] = useState<'positive' | 'negative' | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [resultSaved, setResultSaved] = useState<boolean>(false);
   
   // Animation state
   const [showAnimation, setShowAnimation] = useState(true);
@@ -93,6 +97,69 @@ const Feedback = () => {
     
     return () => clearTimeout(timer);
   }, [isAuthenticated, navigate, toast]);
+  
+  // Save result to Supabase
+  const saveToDatabase = async () => {
+    if (!currentDoctor || !patientData || !beforeImage || !afterImage || !analysisResult) {
+      toast({
+        title: "Cannot save result",
+        description: "Missing required data for saving the result",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      // First upload the images to Supabase Storage
+      const beforeImageUrl = await uploadScreeningImage(
+        beforeImage,
+        currentDoctor.id,
+        patientData.id || 'temp-patient-id',
+        'before'
+      );
+      
+      const afterImageUrl = await uploadScreeningImage(
+        afterImage,
+        currentDoctor.id,
+        patientData.id || 'temp-patient-id',
+        'after'
+      );
+      
+      // Then save the screening result to the database
+      const screeningResult = {
+        patient_id: patientData.id || 'temp-patient-id',
+        doctor_id: currentDoctor.id,
+        before_image_url: beforeImageUrl,
+        after_image_url: afterImageUrl,
+        result: analysisResult,
+        confidence: 0.85, // Mock confidence value
+        notes: `Screening performed on ${new Date().toLocaleDateString()}`
+      };
+      
+      const savedResult = await saveScreeningResult(screeningResult, currentDoctor);
+      
+      if (savedResult) {
+        setResultSaved(true);
+        toast({
+          title: "Result saved",
+          description: "The screening result has been saved to the database",
+        });
+      } else {
+        throw new Error('Failed to save result');
+      }
+    } catch (error) {
+      console.error('Error saving result:', error);
+      toast({
+        title: "Save failed",
+        description: "There was an error saving the screening result",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   const handleNewScan = () => {
     // Clear current patient and images
@@ -201,6 +268,24 @@ const Feedback = () => {
                 ) : (
                   <p>Analysis pending...</p>
                 )}
+                
+                {/* Database Save Status */}
+                <div className="mt-4">
+                  {!resultSaved ? (
+                    <Button 
+                      onClick={saveToDatabase} 
+                      disabled={isSaving || !currentDoctor}
+                      className="w-full bg-cervi-500 hover:bg-cervi-600 text-white"
+                    >
+                      {isSaving ? 'Saving to Database...' : 'Save Result to Database'}
+                    </Button>
+                  ) : (
+                    <div className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg border border-green-100">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <p className="text-sm text-green-700">Result saved successfully</p>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {patientData && (

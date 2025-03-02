@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS public.screening_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
   doctor_id UUID NOT NULL REFERENCES public.doctors(id) ON DELETE CASCADE,
+  before_image_url TEXT,
+  after_image_url TEXT,
   image_url TEXT,
   result TEXT NOT NULL,
   confidence NUMERIC(5,2),
