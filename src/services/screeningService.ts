@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 import { Doctor } from '@/types/auth';
@@ -81,9 +80,14 @@ export const ensurePatientExists = async (
       }
     }
     
+    // Generate a unique ID for the patient
+    const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const uniqueId = `PT-${randomId}`;
+    
     // If we reach here, we need to create a real patient
     const newPatient = {
       doctor_id: doctorId,
+      unique_id: uniqueId,
       first_name: patientData.firstName || 'Unknown',
       last_name: patientData.lastName || 'Patient',
       date_of_birth: patientData.dateOfBirth instanceof Date 
