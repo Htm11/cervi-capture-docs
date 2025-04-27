@@ -98,32 +98,6 @@ const ResultDetail = () => {
     navigate('/results');
   };
   
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-full">
-          <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  if (!result) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-muted-foreground">Result not found</p>
-          <Button 
-            className="mt-4 bg-cervi-500 hover:bg-cervi-600 text-white"
-            onClick={goBack}
-          >
-            Go Back
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
-  
   const formatMedicalHistory = (medicalHistoryData: string | null) => {
     if (!medicalHistoryData) return null;
     
