@@ -1,16 +1,12 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 
 export interface Patient {
   id?: string;
   doctor_id: string;
-  first_name: string;
-  last_name: string;
+  unique_id: string;
   date_of_birth: string;
-  contact_number?: string;
-  email?: string;
-  medical_history?: any; // Changed from string to any to support JSON
+  medical_history?: any;
 }
 
 export const getPatients = async (): Promise<Patient[]> => {
@@ -49,7 +45,6 @@ export const getPatient = async (patientId: string): Promise<Patient | null> => 
       return null;
     }
 
-    // Check if patientId is a valid UUID before querying
     if (!patientId || patientId === 'temp-patient-id' || patientId.length < 36) {
       console.warn('Invalid patient ID provided:', patientId);
       return null;
@@ -85,34 +80,9 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
       return null;
     }
 
-    // Ensure date_of_birth is a valid date string
-    if (!patient.date_of_birth || patient.date_of_birth === 'Invalid Date') {
-      patient.date_of_birth = new Date().toISOString().split('T')[0];
-    }
-
-    // Ensure medical_history is a valid JSON object if it exists
-    if (patient.medical_history) {
-      // If it's a string, try to parse it as JSON
-      if (typeof patient.medical_history === 'string') {
-        try {
-          patient.medical_history = JSON.parse(patient.medical_history);
-        } catch (e) {
-          console.warn('Could not parse medical_history as JSON, saving as object with text property');
-          patient.medical_history = { text: patient.medical_history };
-        }
-      }
-      
-      // Log the medical history to validate data structure before saving
-      console.log('Medical history to be saved:', JSON.stringify(patient.medical_history, null, 2));
-      
-      // Ensure conditions and symptoms are properly structured
-      if (patient.medical_history.medical && Array.isArray(patient.medical_history.medical.conditions)) {
-        console.log('Conditions found:', patient.medical_history.medical.conditions);
-      }
-      
-      if (patient.medical_history.medical && Array.isArray(patient.medical_history.medical.symptoms)) {
-        console.log('Symptoms found:', patient.medical_history.medical.symptoms);
-      }
+    if (!patient.unique_id) {
+      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      patient.unique_id = `PT-${randomId}`;
     }
 
     const { data, error } = await supabase
@@ -128,7 +98,7 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
 
     toast({
       title: "Patient created",
-      description: `${patient.first_name} ${patient.last_name} was successfully added.`,
+      description: `Patient ${patient.unique_id} was successfully added.`,
     });
 
     return data;
@@ -150,9 +120,7 @@ export const updatePatient = async (patientId: string, updates: Partial<Patient>
       return null;
     }
 
-    // Ensure medical_history is a valid JSON object if it exists
     if (updates.medical_history) {
-      // If it's a string, try to parse it as JSON
       if (typeof updates.medical_history === 'string') {
         try {
           updates.medical_history = JSON.parse(updates.medical_history);
@@ -162,10 +130,8 @@ export const updatePatient = async (patientId: string, updates: Partial<Patient>
         }
       }
       
-      // Log the medical history to validate data structure before updating
       console.log('Medical history to be updated:', JSON.stringify(updates.medical_history, null, 2));
       
-      // Ensure conditions and symptoms are properly structured
       if (updates.medical_history.medical && Array.isArray(updates.medical_history.medical.conditions)) {
         console.log('Conditions found:', updates.medical_history.medical.conditions);
       }

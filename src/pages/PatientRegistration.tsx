@@ -26,11 +26,7 @@ import {
 } from "@/components/ui/select";
 
 interface PatientData {
-  firstName: string;
-  lastName: string;
-  countryCode: string;
-  phoneNumber: string;
-  email: string;
+  unique_id: string;
   dateOfBirth: Date | undefined;
   sociodemographicData: string;
   reproductiveHistory: string;
@@ -92,11 +88,7 @@ const PatientRegistration = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [patientData, setPatientData] = useState<PatientData>({
-    firstName: '',
-    lastName: '',
-    countryCode: '+250',
-    phoneNumber: '',
-    email: '',
+    unique_id: `PT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
     dateOfBirth: undefined,
     sociodemographicData: '',
     reproductiveHistory: '',
@@ -209,32 +201,8 @@ const PatientRegistration = () => {
     const newErrors: FormErrors = {};
     
     if (step === 1) {
-      const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
-      
-      requiredFields.forEach(field => {
-        if (!patientData[field as keyof PatientData]) {
-          newErrors[field] = 'This field is required';
-        }
-      });
-      
-      if (patientData.phoneNumber && !/^\d{7,12}$/.test(patientData.phoneNumber)) {
-        newErrors.phoneNumber = 'Please enter a valid phone number (7-12 digits)';
-      }
-      
-      if (patientData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientData.email)) {
-        newErrors.email = 'Please enter a valid email address';
-      }
-      
       if (!patientData.dateOfBirth) {
         newErrors.dateOfBirth = 'Date of birth is required';
-      }
-    } else if (step === 2) {
-      if (!confirmVerified) {
-        newErrors.confirmVerified = 'Please confirm that all information has been verified';
-      }
-      
-      if (!confirmInformed) {
-        newErrors.confirmInformed = 'Please confirm that the patient has been informed about the procedure';
       }
     }
     
@@ -280,11 +248,8 @@ const PatientRegistration = () => {
       
       const newPatient = {
         doctor_id: currentDoctor.id,
-        first_name: patientData.firstName,
-        last_name: patientData.lastName,
+        unique_id: patientData.unique_id,
         date_of_birth: patientData.dateOfBirth ? format(patientData.dateOfBirth, 'yyyy-MM-dd') : new Date().toISOString().split('T')[0],
-        contact_number: `${patientData.countryCode}${patientData.phoneNumber}`,
-        email: patientData.email,
         medical_history: medicalHistoryJSON
       };
       
@@ -343,7 +308,6 @@ const PatientRegistration = () => {
           ...patientData,
           id: createdPatientId,
           screeningStep: 'before-acetic',
-          phoneNumber: `${patientData.countryCode}${patientData.phoneNumber}`,
           medicalHistory: medicalHistoryJSON
         };
         
@@ -379,63 +343,13 @@ const PatientRegistration = () => {
             <h2 className="text-lg font-medium mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <input
-                  id="firstName"
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter first name"
-                  value={patientData.firstName}
-                  onChange={handleChange}
-                />
-                {errors.firstName && <p className="text-destructive text-xs">{errors.firstName}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <input
-                  id="lastName"
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter last name"
-                  value={patientData.lastName}
-                  onChange={handleChange}
-                />
-                {errors.lastName && <p className="text-destructive text-xs">{errors.lastName}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <div className="flex">
-                  <div className="flex items-center justify-center px-3 py-2 bg-gray-100 border border-gray-300 rounded-l-md font-medium text-sm">
-                    +250
-                  </div>
-                  <input
-                    id="phoneNumber"
-                    type="tel"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-r-md"
-                    placeholder="e.g. 78123456"
-                    value={patientData.phoneNumber}
-                    onChange={handleChange}
-                  />
+                <Label>Patient ID</Label>
+                <div className="px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                  <span className="text-gray-600">{patientData.unique_id}</span>
                 </div>
-                {errors.phoneNumber && <p className="text-destructive text-xs">{errors.phoneNumber}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  Email (optional)
-                </Label>
-                <input
-                  id="email"
-                  type="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="patient@example.com"
-                  value={patientData.email}
-                  onChange={handleChange}
-                />
-                {errors.email && <p className="text-destructive text-xs">{errors.email}</p>}
+                <p className="text-xs text-muted-foreground">
+                  Automatically generated unique identifier
+                </p>
               </div>
               
               <div className="space-y-2">
