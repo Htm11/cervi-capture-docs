@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
 
@@ -79,29 +80,56 @@ export const createPatient = async (patient: Patient): Promise<Patient | null> =
       console.error('Supabase client is not initialized');
       return null;
     }
-
-    if (!patient.unique_id) {
-      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      patient.unique_id = `PT-${randomId}`;
+    
+    let attempts = 0;
+    const maxAttempts = 3;
+    let createdPatient = null;
+    
+    while (attempts < maxAttempts && !createdPatient) {
+      attempts++;
+      
+      // Generate a new unique ID if not first attempt
+      if (attempts > 1) {
+        const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+        patient.unique_id = `PT-${randomId}`;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('patients')
+          .insert(patient)
+          .select()
+          .single();
+          
+        if (error) {
+          // If it's a duplicate key error, we'll retry with a new ID
+          if (error.code === '23505' && attempts < maxAttempts) {
+            console.log(`Duplicate ID detected, trying again with new ID: ${patient.unique_id}`);
+            continue;
+          }
+          
+          console.error('Error creating patient:', error);
+          throw error;
+        }
+        
+        createdPatient = data;
+      } catch (innerError) {
+        // If this is the last attempt, throw the error
+        if (attempts >= maxAttempts) {
+          throw innerError;
+        }
+      }
     }
-
-    const { data, error } = await supabase
-      .from('patients')
-      .insert(patient)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating patient:', error);
-      throw error;
+    
+    if (createdPatient) {
+      toast({
+        title: "Patient created",
+        description: `Patient ${patient.unique_id} was successfully added.`,
+      });
+      return createdPatient;
+    } else {
+      throw new Error('Failed to create patient after multiple attempts');
     }
-
-    toast({
-      title: "Patient created",
-      description: `Patient ${patient.unique_id} was successfully added.`,
-    });
-
-    return data;
   } catch (error) {
     console.error('Error in createPatient:', error);
     toast({
