@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ScreeningResult, getDoctorScreeningResults, deleteScreeningResult } from '@/services/screeningService';
 import {
   AlertDialog,
@@ -78,11 +77,13 @@ const Results = () => {
   const filteredResults = results.filter(result => {
     if (!result.patients) return false;
     
-    const patientName = `${result.patients.first_name} ${result.patients.last_name}`.toLowerCase();
-    const patientPhone = result.patients.contact_number || '';
+    const patientName = `${result.patients.first_name || ''} ${result.patients.last_name || ''}`.toLowerCase();
+    const patientId = result.patients.unique_id || '';
+    const contactNumber = result.patients.contact_number || '';
     
     return patientName.includes(searchTerm.toLowerCase()) || 
-           patientPhone.includes(searchTerm);
+           patientId.includes(searchTerm.toLowerCase()) ||
+           contactNumber.includes(searchTerm);
   });
   
   const handleResultClick = (result: ScreeningResult) => {
@@ -143,7 +144,7 @@ const Results = () => {
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search by name or phone number"
+            placeholder="Search by patient ID, name or phone number"
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -175,7 +176,7 @@ const Results = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="font-medium">
-                      {result.patients?.first_name} {result.patients?.last_name}
+                      {result.patients?.unique_id || 'No ID'}
                     </h3>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
                       <Phone className="h-3 w-3 mr-1" />
