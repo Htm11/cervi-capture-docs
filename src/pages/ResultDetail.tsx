@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,17 +12,17 @@ import { ScreeningResult } from '@/services/screeningService';
 import { supabase } from '@/lib/supabase';
 
 interface MedicalHistoryData {
-  sociodemographic: {
+  sociodemographic?: {
     education: string;
     occupation: string;
     maritalStatus: string;
   };
-  lifestyle: {
+  lifestyle?: {
     smoking: string;
     alcohol: string;
     physicalActivity: string;
   };
-  medical: {
+  medical?: {
     conditions: string[];
     symptoms: string[];
     reproductiveHistory: {
@@ -97,6 +98,32 @@ const ResultDetail = () => {
   const goBack = () => {
     navigate('/results');
   };
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (!result) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-muted-foreground">Result not found</p>
+          <Button 
+            className="mt-4 bg-cervi-500 hover:bg-cervi-600 text-white"
+            onClick={goBack}
+          >
+            Go Back
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
   
   const formatMedicalHistory = (medicalHistoryData: string | null) => {
     if (!medicalHistoryData) return null;
@@ -210,32 +237,6 @@ const ResultDetail = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-full">
-          <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  if (!result) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-muted-foreground">Result not found</p>
-          <Button 
-            className="mt-4 bg-cervi-500 hover:bg-cervi-600 text-white"
-            onClick={goBack}
-          >
-            Go Back
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
-  
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
