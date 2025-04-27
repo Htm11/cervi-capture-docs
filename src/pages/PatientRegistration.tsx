@@ -45,6 +45,14 @@ const contraceptiveOptions = [
   "None", "Oral pills", "IUD", "Other"
 ];
 
+const previousScreeningOptions = [
+  "Never", ">5 years ago", "<5 years ago"
+];
+
+const screeningResultOptions = [
+  "NA", "Normal", "Abnormal", "Unknown"
+];
+
 interface PatientData {
   unique_id: string;
   dateOfBirth: Date | undefined;
@@ -60,7 +68,6 @@ interface PatientData {
   medicalHistory: string;
   lifestyleFactors: string;
   symptoms: string;
-  lastVisaExamResults: string;
   
   education: string;
   occupation: string;
@@ -70,6 +77,10 @@ interface PatientData {
   physicalActivity: string;
   existingConditions: string[];
   commonSymptoms: string[];
+  screeningHistory: {
+    previousScreening: string;
+    screeningResult: string;
+  };
 }
 
 interface FormErrors {
@@ -141,7 +152,6 @@ const PatientRegistration = () => {
     medicalHistory: '',
     lifestyleFactors: '',
     symptoms: '',
-    lastVisaExamResults: '',
     
     education: '',
     occupation: '',
@@ -150,7 +160,11 @@ const PatientRegistration = () => {
     alcoholUse: 'Never',
     physicalActivity: '',
     existingConditions: [],
-    commonSymptoms: []
+    commonSymptoms: [],
+    screeningHistory: {
+      previousScreening: '',
+      screeningResult: ''
+    }
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -284,7 +298,7 @@ const PatientRegistration = () => {
           conditions: patientData.existingConditions,
           symptoms: patientData.commonSymptoms,
           reproductiveHistory: patientData.reproductiveHistory,
-          lastVisaExamResults: patientData.lastVisaExamResults
+          
         }
       };
       
@@ -346,7 +360,7 @@ const PatientRegistration = () => {
             conditions: patientData.existingConditions,
             symptoms: patientData.commonSymptoms,
             reproductiveHistory: patientData.reproductiveHistory,
-            lastVisaExamResults: patientData.lastVisaExamResults
+            
           }
         };
         
@@ -801,15 +815,65 @@ const PatientRegistration = () => {
             </div>
             
             <div className="mb-6">
-              <FormField
-                id="lastVisaExamResults"
-                label="Last Visa Exam Results"
-                multiline
-                placeholder="Enter results from the last visa exam"
-                value={patientData.lastVisaExamResults}
-                onChange={handleChange}
-              />
+              <h3 className="text-md font-medium mb-4">Screening History</h3>
+              
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-sm">Previous cervical cancer screening</Label>
+                  <RadioGroup
+                    value={patientData.screeningHistory.previousScreening}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      screeningHistory: {
+                        ...prev.screeningHistory,
+                        previousScreening: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {previousScreeningOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`screening-${option}`} />
+                        <Label 
+                          htmlFor={`screening-${option}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Result (if known)</Label>
+                  <RadioGroup
+                    value={patientData.screeningHistory.screeningResult}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      screeningHistory: {
+                        ...prev.screeningHistory,
+                        screeningResult: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {screeningResultOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`result-${option}`} />
+                        <Label 
+                          htmlFor={`result-${option}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              </div>
             </div>
+
             
             <div className="mt-6 space-y-4">
               <div className="flex items-start space-x-3">
@@ -919,10 +983,3 @@ const PatientRegistration = () => {
               )}
             </Button>
           </div>
-        </div>
-      </div>
-    </Layout>
-  );
-};
-
-export default PatientRegistration;
