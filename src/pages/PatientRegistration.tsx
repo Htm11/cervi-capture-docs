@@ -57,7 +57,7 @@ const steps: Step[] = [
 ];
 
 const educationLevels = [
-  "None", "Primary", "Secondary", "Tertiary", "University", "Postgraduate"
+  "None", "Primary", "Secondary", "Higher Education"
 ];
 
 const maritalStatusOptions = [
@@ -79,6 +79,10 @@ const symptomsList = [
 const physicalActivityOptions = [
   "None", "Light (1-2 days/week)", "Moderate (3-4 days/week)", 
   "Active (5+ days/week)", "Very active"
+];
+
+const occupationOptions = [
+  "Unemployed", "Employed", "Student", "Retired"
 ];
 
 const PatientRegistration = () => {
@@ -446,14 +450,19 @@ const PatientRegistration = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="occupation">Occupation</Label>
-                  <input
-                    id="occupation"
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter occupation"
-                    value={patientData.occupation}
-                    onChange={handleChange}
-                  />
+                  <Select 
+                    value={patientData.occupation} 
+                    onValueChange={(value) => handleSelectChange('occupation', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select occupation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {occupationOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
