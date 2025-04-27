@@ -11,28 +11,27 @@ import { ScreeningResult } from '@/services/screeningService';
 import { supabase } from '@/lib/supabase';
 
 interface MedicalHistoryData {
-  sociodemographic?: {
-    education?: string;
-    occupation?: string;
-    maritalStatus?: string;
+  sociodemographic: {
+    education: string;
+    occupation: string;
+    maritalStatus: string;
   };
-  lifestyle?: {
-    smoking?: string;
-    alcohol?: string;
-    physicalActivity?: string;
+  lifestyle: {
+    smoking: string;
+    alcohol: string;
+    physicalActivity: string;
   };
-  medical?: {
-    conditions?: string[] | string;
-    symptoms?: string[] | string;
-    reproductiveHistory?: {
-      pregnancies?: string;
-      parity?: string;
-      menstrualStatus?: string;
-      sexualActivityAge?: string;
-      contraceptiveUse?: string;
+  medical: {
+    conditions: string[];
+    symptoms: string[];
+    reproductiveHistory: {
+      pregnancies: string;
+      parity: string;
+      menstrualStatus: string;
+      sexualActivityAge: string;
+      contraceptiveUse: string;
       otherContraceptive?: string;
-    } | string;
-    lastVisaExamResults?: string;
+    };
   };
 }
 
@@ -134,9 +133,10 @@ const ResultDetail = () => {
       if (typeof medicalHistoryData === 'string') {
         try {
           medicalHistory = JSON.parse(medicalHistoryData) as MedicalHistoryData;
+          console.log('Parsed medical history:', medicalHistory);
         } catch (e) {
           console.error('Error parsing medical history:', e);
-          return <p className="text-red-500">Error parsing medical history</p>;
+          return <p className="text-red-500">Error parsing medical history data</p>;
         }
       } else {
         medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
@@ -148,13 +148,13 @@ const ResultDetail = () => {
             <h3 className="text-sm font-semibold">Sociodemographic Data</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Education</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.education || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.education || 'Not provided'}</div>
               
               <div className="text-muted-foreground">Occupation</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.occupation || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.occupation || 'Not provided'}</div>
               
               <div className="text-muted-foreground">Marital Status</div>
-              <div className="font-medium">{medicalHistory.sociodemographic?.maritalStatus || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.sociodemographic?.maritalStatus || 'Not provided'}</div>
             </div>
           </div>
           
@@ -162,13 +162,13 @@ const ResultDetail = () => {
             <h3 className="text-sm font-semibold">Lifestyle Factors</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Smoking</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.smoking || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.smoking || 'Not provided'}</div>
               
               <div className="text-muted-foreground">Alcohol</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.alcohol || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.alcohol || 'Not provided'}</div>
               
               <div className="text-muted-foreground">Physical Activity</div>
-              <div className="font-medium">{medicalHistory.lifestyle?.physicalActivity || 'Not available'}</div>
+              <div className="font-medium">{medicalHistory.lifestyle?.physicalActivity || 'Not provided'}</div>
             </div>
           </div>
           
@@ -177,66 +177,54 @@ const ResultDetail = () => {
             <div className="grid grid-cols-2 gap-y-4 text-sm">
               <div className="text-muted-foreground">Medical Conditions</div>
               <div className="font-medium">
-                {medicalHistory.medical?.conditions ? (
-                  Array.isArray(medicalHistory.medical.conditions) ? (
-                    medicalHistory.medical.conditions.length > 0 ? (
-                      medicalHistory.medical.conditions.includes("None") ? (
-                        "None"
-                      ) : (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {medicalHistory.medical.conditions.map((condition: string, index: number) => (
-                            <li key={index}>{condition}</li>
-                          ))}
-                        </ul>
-                      )
-                    ) : "None"
+                {medicalHistory.medical?.conditions && medicalHistory.medical.conditions.length > 0 ? (
+                  medicalHistory.medical.conditions.includes("None") ? (
+                    "None"
                   ) : (
-                    medicalHistory.medical.conditions === "None" ? 
-                      "None" : medicalHistory.medical.conditions
+                    <ul className="list-disc pl-5 space-y-1">
+                      {medicalHistory.medical.conditions.map((condition, index) => (
+                        <li key={index}>{condition}</li>
+                      ))}
+                    </ul>
                   )
-                ) : "None"}
+                ) : (
+                  "Not provided"
+                )}
               </div>
               
               <div className="text-muted-foreground">Current Symptoms</div>
               <div className="font-medium">
-                {medicalHistory.medical?.symptoms ? (
-                  Array.isArray(medicalHistory.medical.symptoms) ? (
-                    medicalHistory.medical.symptoms.length > 0 ? (
-                      medicalHistory.medical.symptoms.includes("None") ? (
-                        "None"
-                      ) : (
-                        <ul className="list-disc pl-5 space-y-1">
-                          {medicalHistory.medical.symptoms.map((symptom: string, index: number) => (
-                            <li key={index}>{symptom}</li>
-                          ))}
-                        </ul>
-                      )
-                    ) : "None"
+                {medicalHistory.medical?.symptoms && medicalHistory.medical.symptoms.length > 0 ? (
+                  medicalHistory.medical.symptoms.includes("None") ? (
+                    "None"
                   ) : (
-                    medicalHistory.medical.symptoms === "None" ? 
-                      "None" : medicalHistory.medical.symptoms
+                    <ul className="list-disc pl-5 space-y-1">
+                      {medicalHistory.medical.symptoms.map((symptom, index) => (
+                        <li key={index}>{symptom}</li>
+                      ))}
+                    </ul>
                   )
-                ) : "None"}
+                ) : (
+                  "Not provided"
+                )}
               </div>
               
               <div className="text-muted-foreground">Reproductive History</div>
               <div className="font-medium">
                 {medicalHistory.medical?.reproductiveHistory ? (
-                  typeof medicalHistory.medical.reproductiveHistory === 'string' ? (
-                    medicalHistory.medical.reproductiveHistory
-                  ) : (
-                    <ul className="list-none space-y-1">
-                      <li>Pregnancies: {medicalHistory.medical.reproductiveHistory.pregnancies || 'Not specified'}</li>
-                      <li>Parity: {medicalHistory.medical.reproductiveHistory.parity || 'Not specified'}</li>
-                      <li>Menstrual Status: {medicalHistory.medical.reproductiveHistory.menstrualStatus || 'Not specified'}</li>
-                      <li>Age at First Sexual Activity: {medicalHistory.medical.reproductiveHistory.sexualActivityAge || 'Not specified'}</li>
-                      <li>Contraceptive Use: {medicalHistory.medical.reproductiveHistory.contraceptiveUse || 'Not specified'}</li>
-                      {medicalHistory.medical.reproductiveHistory.contraceptiveUse === 'Other' && (
-                        <li>Other Contraceptive: {medicalHistory.medical.reproductiveHistory.otherContraceptive || 'Not specified'}</li>
-                      )}
-                    </ul>
-                  )
-                ) : 'Not available'}
+                  <ul className="list-none space-y-1">
+                    <li>Number of Pregnancies: {medicalHistory.medical.reproductiveHistory.pregnancies || 'Not provided'}</li>
+                    <li>Live Births: {medicalHistory.medical.reproductiveHistory.parity || 'Not provided'}</li>
+                    <li>Menstrual Status: {medicalHistory.medical.reproductiveHistory.menstrualStatus || 'Not provided'}</li>
+                    <li>Age at First Sexual Activity: {medicalHistory.medical.reproductiveHistory.sexualActivityAge || 'Not provided'}</li>
+                    <li>Contraceptive Use: {medicalHistory.medical.reproductiveHistory.contraceptiveUse || 'Not provided'}</li>
+                    {medicalHistory.medical.reproductiveHistory.contraceptiveUse === 'Other' && (
+                      <li>Other Contraceptive: {medicalHistory.medical.reproductiveHistory.otherContraceptive || 'Not specified'}</li>
+                    )}
+                  </ul>
+                ) : (
+                  'Not provided'
+                )}
               </div>
             </div>
           </div>
