@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
 import { ScreeningResult, getDoctorScreeningResults, deleteScreeningResult } from '@/services/screeningService';
 import {
   AlertDialog,
@@ -133,12 +134,52 @@ const Results = () => {
   const cancelDelete = () => {
     setDeleteId(null);
   };
-  
+
+  const handleExportToExcel = () => {
+    try {
+      const excelData = filteredResults.map(result => ({
+        'Patient ID': result.patients?.unique_id || 'N/A',
+        'Contact Number': result.patients?.contact_number || 'N/A',
+        'Result': result.result || 'N/A',
+        'Screening Date': result.created_at ? format(new Date(result.created_at), 'MMM d, yyyy') : 'N/A',
+        'Notes': result.notes || 'N/A'
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Screening Results');
+
+      const fileName = `screening_results_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast({
+        title: "Export successful",
+        description: "Your screening results have been exported to Excel.",
+      });
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting your results to Excel.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Patient Results History</h1>
+          <Button
+            onClick={handleExportToExcel}
+            className="bg-green-600 hover:bg-green-700 text-white"
+            disabled={filteredResults.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export to Excel
+          </Button>
         </div>
         
         <div className="relative mb-6">
