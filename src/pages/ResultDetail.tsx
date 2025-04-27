@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, XCircle, Calendar, Phone, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScreeningResult } from '@/services/screeningService';
@@ -24,7 +25,14 @@ interface MedicalHistoryData {
   medical?: {
     conditions?: string[] | string;
     symptoms?: string[] | string;
-    reproductiveHistory?: string;
+    reproductiveHistory?: {
+      pregnancies?: string;
+      parity?: string;
+      menstrualStatus?: string;
+      sexualActivityAge?: string;
+      contraceptiveUse?: string;
+      otherContraceptive?: string;
+    } | string;
     lastVisaExamResults?: string;
   };
 }
@@ -64,59 +72,6 @@ const ResultDetail = () => {
         
         if (data) {
           console.log('Loaded result detail:', data);
-          
-          if (data.patients?.medical_history) {
-            console.log('Medical history raw:', data.patients.medical_history);
-            
-            if (typeof data.patients.medical_history === 'string') {
-              try {
-                const parsed = JSON.parse(data.patients.medical_history) as MedicalHistoryData;
-                console.log('Medical history parsed:', parsed);
-                
-                if (parsed.medical && parsed.medical.conditions) {
-                  console.log('Medical conditions:', parsed.medical.conditions);
-                  console.log('Is conditions an array:', Array.isArray(parsed.medical.conditions));
-                  console.log('Conditions length:', Array.isArray(parsed.medical.conditions) ? parsed.medical.conditions.length : 'Not an array');
-                }
-                
-                if (parsed.medical && parsed.medical.symptoms) {
-                  console.log('Symptoms:', parsed.medical.symptoms);
-                  console.log('Is symptoms an array:', Array.isArray(parsed.medical.symptoms));
-                  console.log('Symptoms length:', Array.isArray(parsed.medical.symptoms) ? parsed.medical.symptoms.length : 'Not an array');
-                }
-              } catch (e) {
-                console.error('Error parsing medical history:', e);
-              }
-            } else {
-              const medicalHistory = data.patients.medical_history as unknown as MedicalHistoryData;
-              console.log('Medical history (object):', medicalHistory);
-              
-              if (medicalHistory.medical && 
-                  medicalHistory.medical.conditions) {
-                console.log('Medical conditions:', 
-                  medicalHistory.medical.conditions);
-                console.log('Is conditions an array:', Array.isArray(medicalHistory.medical.conditions));
-                console.log('Conditions length:', Array.isArray(medicalHistory.medical.conditions) ? medicalHistory.medical.conditions.length : 'Not an array');
-              }
-              
-              if (medicalHistory.medical && 
-                  medicalHistory.medical.symptoms) {
-                console.log('Symptoms:', 
-                  medicalHistory.medical.symptoms);
-                console.log('Is symptoms an array:', Array.isArray(medicalHistory.medical.symptoms));
-                console.log('Symptoms length:', Array.isArray(medicalHistory.medical.symptoms) ? medicalHistory.medical.symptoms.length : 'Not an array');
-              }
-            }
-          }
-          
-          if (data.before_image_url) {
-            console.log('Before image URL:', data.before_image_url);
-          }
-          
-          if (data.after_image_url) {
-            console.log('After image URL:', data.after_image_url);
-          }
-          
           setResult(data as ScreeningResult);
         } else {
           toast({
@@ -188,7 +143,44 @@ const ResultDetail = () => {
         medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
       }
       
-      console.log('Formatting medical history:', JSON.stringify(medicalHistory, null, 2));
+      // Format reproductive history data
+      const formatReproductiveHistory = (reproHistory: any) => {
+        if (!reproHistory) return 'Not available';
+        
+        // Check if it's a string
+        if (typeof reproHistory === 'string') {
+          return reproHistory;
+        }
+        
+        // Format object data
+        const items = [];
+        if (reproHistory.pregnancies) {
+          items.push(`Pregnancies: ${reproHistory.pregnancies}`);
+        }
+        if (reproHistory.parity) {
+          items.push(`Parity: ${reproHistory.parity}`);
+        }
+        if (reproHistory.menstrualStatus) {
+          items.push(`Menstrual Status: ${reproHistory.menstrualStatus}`);
+        }
+        if (reproHistory.sexualActivityAge) {
+          items.push(`Age at First Sexual Activity: ${reproHistory.sexualActivityAge}`);
+        }
+        if (reproHistory.contraceptiveUse) {
+          items.push(`Contraceptive Use: ${reproHistory.contraceptiveUse}`);
+          if (reproHistory.contraceptiveUse === 'Other' && reproHistory.otherContraceptive) {
+            items.push(`Other Contraceptive: ${reproHistory.otherContraceptive}`);
+          }
+        }
+        
+        return items.length > 0 ? (
+          <ul className="list-disc pl-5 space-y-1">
+            {items.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        ) : 'Not available';
+      };
       
       return (
         <div className="space-y-3">
@@ -289,12 +281,12 @@ const ResultDetail = () => {
                 ) : "None"}
               </div>
               
-              {medicalHistory.medical?.reproductiveHistory && (
-                <>
-                  <div className="text-muted-foreground">Reproductive History</div>
-                  <div className="font-medium">{medicalHistory.medical.reproductiveHistory}</div>
-                </>
-              )}
+              <div className="text-muted-foreground">Reproductive History</div>
+              <div className="font-medium">
+                {medicalHistory.medical?.reproductiveHistory ? 
+                  formatReproductiveHistory(medicalHistory.medical.reproductiveHistory) : 
+                  'Not available'}
+              </div>
               
               {medicalHistory.medical?.lastVisaExamResults && (
                 <>
