@@ -25,11 +25,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const pregnancyOptions = [
+  "0", "1–2", "3–4", "5+"
+];
+
+const parityOptions = [
+  "0", "1–2", "3–4", "5+"
+];
+
+const menstrualStatusOptions = [
+  "Regular", "Irregular", "Postmenopausal"
+];
+
+const sexualActivityAgeOptions = [
+  "<16", "16–18", ">18"
+];
+
+const contraceptiveOptions = [
+  "None", "Oral pills", "IUD", "Other"
+];
+
 interface PatientData {
   unique_id: string;
   dateOfBirth: Date | undefined;
   sociodemographicData: string;
-  reproductiveHistory: string;
+  reproductiveHistory: {
+    pregnancies: string;
+    parity: string;
+    menstrualStatus: string;
+    sexualActivityAge: string;
+    contraceptiveUse: string;
+    otherContraceptive?: string;
+  };
   medicalHistory: string;
   lifestyleFactors: string;
   symptoms: string;
@@ -103,7 +130,14 @@ const PatientRegistration = () => {
     unique_id: `PT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
     dateOfBirth: undefined,
     sociodemographicData: '',
-    reproductiveHistory: '',
+    reproductiveHistory: {
+      pregnancies: '',
+      parity: '',
+      menstrualStatus: '',
+      sexualActivityAge: '',
+      contraceptiveUse: 'None',
+      otherContraceptive: ''
+    },
     medicalHistory: '',
     lifestyleFactors: '',
     symptoms: '',
@@ -543,6 +577,166 @@ const PatientRegistration = () => {
             </div>
             
             <div className="mb-6">
+              <h3 className="text-md font-medium mb-4">Reproductive History</h3>
+              
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-sm">Number of pregnancies</Label>
+                  <RadioGroup
+                    value={patientData.reproductiveHistory.pregnancies}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      reproductiveHistory: {
+                        ...prev.reproductiveHistory,
+                        pregnancies: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {pregnancyOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`pregnancy-${option}`} />
+                        <Label 
+                          htmlFor={`pregnancy-${option}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Parity (live births)</Label>
+                  <RadioGroup
+                    value={patientData.reproductiveHistory.parity}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      reproductiveHistory: {
+                        ...prev.reproductiveHistory,
+                        parity: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {parityOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`parity-${option}`} />
+                        <Label 
+                          htmlFor={`parity-${option}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Menstrual Status</Label>
+                  <RadioGroup
+                    value={patientData.reproductiveHistory.menstrualStatus}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      reproductiveHistory: {
+                        ...prev.reproductiveHistory,
+                        menstrualStatus: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {menstrualStatusOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`menstrual-${option.toLowerCase()}`} />
+                        <Label 
+                          htmlFor={`menstrual-${option.toLowerCase()}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Age at first sexual activity</Label>
+                  <RadioGroup
+                    value={patientData.reproductiveHistory.sexualActivityAge}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      reproductiveHistory: {
+                        ...prev.reproductiveHistory,
+                        sexualActivityAge: value
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {sexualActivityAgeOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`sexual-age-${option}`} />
+                        <Label 
+                          htmlFor={`sexual-age-${option}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm">Contraceptive use</Label>
+                  <RadioGroup
+                    value={patientData.reproductiveHistory.contraceptiveUse}
+                    onValueChange={(value) => setPatientData(prev => ({
+                      ...prev,
+                      reproductiveHistory: {
+                        ...prev.reproductiveHistory,
+                        contraceptiveUse: value,
+                        ...(value !== 'Other' && { otherContraceptive: '' })
+                      }
+                    }))}
+                    className="flex space-x-4"
+                  >
+                    {contraceptiveOptions.map((option) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`contraceptive-${option.toLowerCase()}`} />
+                        <Label 
+                          htmlFor={`contraceptive-${option.toLowerCase()}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  
+                  {patientData.reproductiveHistory.contraceptiveUse === 'Other' && (
+                    <div className="mt-2">
+                      <FormField
+                        id="otherContraceptive"
+                        label="Specify other contraceptive"
+                        placeholder="Enter contraceptive method"
+                        value={patientData.reproductiveHistory.otherContraceptive}
+                        onChange={(e) => setPatientData(prev => ({
+                          ...prev,
+                          reproductiveHistory: {
+                            ...prev.reproductiveHistory,
+                            otherContraceptive: e.target.value
+                          }
+                        }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-6">
               <h3 className="text-md font-medium mb-2">Lifestyle Factors</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-3">
@@ -604,17 +798,6 @@ const PatientRegistration = () => {
                   </Select>
                 </div>
               </div>
-            </div>
-            
-            <div className="mb-6">
-              <FormField
-                id="reproductiveHistory"
-                label="Reproductive History"
-                multiline
-                placeholder="Enter details about pregnancies, births, contraceptive use, etc."
-                value={patientData.reproductiveHistory}
-                onChange={handleChange}
-              />
             </div>
             
             <div className="mb-6">
