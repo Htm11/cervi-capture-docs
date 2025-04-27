@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -142,70 +141,10 @@ const ResultDetail = () => {
       } else {
         medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
       }
-      
-      // Format reproductive history data
-      const formatReproductiveHistory = (reproHistory: any) => {
-        if (!reproHistory) return 'Not available';
-        
-        // Check if it's a string
-        if (typeof reproHistory === 'string') {
-          return reproHistory;
-        }
-        
-        // Format object data
-        const items = [];
-        if (reproHistory.pregnancies) {
-          items.push(`Pregnancies: ${reproHistory.pregnancies}`);
-        }
-        if (reproHistory.parity) {
-          items.push(`Parity: ${reproHistory.parity}`);
-        }
-        if (reproHistory.menstrualStatus) {
-          items.push(`Menstrual Status: ${reproHistory.menstrualStatus}`);
-        }
-        if (reproHistory.sexualActivityAge) {
-          items.push(`Age at First Sexual Activity: ${reproHistory.sexualActivityAge}`);
-        }
-        if (reproHistory.contraceptiveUse) {
-          items.push(`Contraceptive Use: ${reproHistory.contraceptiveUse}`);
-          if (reproHistory.contraceptiveUse === 'Other' && reproHistory.otherContraceptive) {
-            items.push(`Other Contraceptive: ${reproHistory.otherContraceptive}`);
-          }
-        }
-        
-        return items.length > 0 ? (
-          <ul className="list-disc pl-5 space-y-1">
-            {items.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        ) : 'Not available';
-      };
-      
+
       return (
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Basic Information</h3>
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
-              <div className="text-muted-foreground">Full Name</div>
-              <div className="font-medium">{result.patients?.first_name} {result.patients?.last_name}</div>
-              
-              <div className="text-muted-foreground">Date of Birth</div>
-              <div className="font-medium">
-                {result.patients?.date_of_birth
-                  ? format(new Date(result.patients.date_of_birth), 'MMM d, yyyy')
-                  : 'Not available'}
-              </div>
-              
-              <div className="text-muted-foreground">Contact Number</div>
-              <div className="font-medium">{result.patients?.contact_number || 'Not available'}</div>
-              
-              <div className="text-muted-foreground">Email</div>
-              <div className="font-medium">{result.patients?.email || 'Not available'}</div>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
+        <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">Sociodemographic Data</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Education</div>
@@ -219,7 +158,7 @@ const ResultDetail = () => {
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">Lifestyle Factors</h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm">
               <div className="text-muted-foreground">Smoking</div>
@@ -233,10 +172,9 @@ const ResultDetail = () => {
             </div>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-4">
             <h3 className="text-sm font-semibold">Medical Information</h3>
-            
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-y-4 text-sm">
               <div className="text-muted-foreground">Medical Conditions</div>
               <div className="font-medium">
                 {medicalHistory.medical?.conditions ? (
@@ -259,7 +197,7 @@ const ResultDetail = () => {
                 ) : "None"}
               </div>
               
-              <div className="text-muted-foreground">Symptoms</div>
+              <div className="text-muted-foreground">Current Symptoms</div>
               <div className="font-medium">
                 {medicalHistory.medical?.symptoms ? (
                   Array.isArray(medicalHistory.medical.symptoms) ? (
@@ -283,17 +221,23 @@ const ResultDetail = () => {
               
               <div className="text-muted-foreground">Reproductive History</div>
               <div className="font-medium">
-                {medicalHistory.medical?.reproductiveHistory ? 
-                  formatReproductiveHistory(medicalHistory.medical.reproductiveHistory) : 
-                  'Not available'}
+                {medicalHistory.medical?.reproductiveHistory ? (
+                  typeof medicalHistory.medical.reproductiveHistory === 'string' ? (
+                    medicalHistory.medical.reproductiveHistory
+                  ) : (
+                    <ul className="list-none space-y-1">
+                      <li>Pregnancies: {medicalHistory.medical.reproductiveHistory.pregnancies || 'Not specified'}</li>
+                      <li>Parity: {medicalHistory.medical.reproductiveHistory.parity || 'Not specified'}</li>
+                      <li>Menstrual Status: {medicalHistory.medical.reproductiveHistory.menstrualStatus || 'Not specified'}</li>
+                      <li>Age at First Sexual Activity: {medicalHistory.medical.reproductiveHistory.sexualActivityAge || 'Not specified'}</li>
+                      <li>Contraceptive Use: {medicalHistory.medical.reproductiveHistory.contraceptiveUse || 'Not specified'}</li>
+                      {medicalHistory.medical.reproductiveHistory.contraceptiveUse === 'Other' && (
+                        <li>Other Contraceptive: {medicalHistory.medical.reproductiveHistory.otherContraceptive || 'Not specified'}</li>
+                      )}
+                    </ul>
+                  )
+                ) : 'Not available'}
               </div>
-              
-              {medicalHistory.medical?.lastVisaExamResults && (
-                <>
-                  <div className="text-muted-foreground">Last Visa Exam Results</div>
-                  <div className="font-medium">{medicalHistory.medical.lastVisaExamResults}</div>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -303,6 +247,32 @@ const ResultDetail = () => {
       return <p className="text-red-500">Error displaying medical history: {(e as Error).message}</p>;
     }
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin h-8 w-8 border-4 border-cervi-500 rounded-full border-t-transparent"></div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  if (!result) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-muted-foreground">Result not found</p>
+          <Button 
+            className="mt-4 bg-cervi-500 hover:bg-cervi-600 text-white"
+            onClick={goBack}
+          >
+            Go Back
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
   
   return (
     <Layout>
