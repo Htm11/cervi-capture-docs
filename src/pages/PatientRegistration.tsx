@@ -85,6 +85,14 @@ const occupationOptions = [
   "Unemployed", "Employed", "Student", "Retired"
 ];
 
+const smokingStatusOptions = [
+  "Never", "Current", "Former"
+];
+
+const alcoholUseOptions = [
+  "Never", "Occasional", "Regular"
+];
+
 const PatientRegistration = () => {
   const { isAuthenticated, currentDoctor } = useAuth();
   const navigate = useNavigate();
@@ -104,8 +112,8 @@ const PatientRegistration = () => {
     education: '',
     occupation: '',
     maritalStatus: '',
-    smokingStatus: 'No',
-    alcoholUse: 'No',
+    smokingStatus: 'Never',
+    alcoholUse: 'Never',
     physicalActivity: '',
     existingConditions: [],
     commonSymptoms: []
@@ -544,18 +552,17 @@ const PatientRegistration = () => {
                     onValueChange={(value) => handleSelectChange('smokingStatus', value)}
                     className="flex flex-col space-y-1"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="smoking-no" />
-                      <Label htmlFor="smoking-no" className="text-sm cursor-pointer">No</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Yes" id="smoking-yes" />
-                      <Label htmlFor="smoking-yes" className="text-sm cursor-pointer">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Former" id="smoking-former" />
-                      <Label htmlFor="smoking-former" className="text-sm cursor-pointer">Former</Label>
-                    </div>
+                    {smokingStatusOptions.map((status) => (
+                      <div key={status} className="flex items-center space-x-2">
+                        <RadioGroupItem value={status} id={`smoking-${status.toLowerCase()}`} />
+                        <Label 
+                          htmlFor={`smoking-${status.toLowerCase()}`} 
+                          className="text-sm cursor-pointer"
+                        >
+                          {status}
+                        </Label>
+                      </div>
+                    ))}
                   </RadioGroup>
                 </div>
                 
@@ -566,18 +573,17 @@ const PatientRegistration = () => {
                     onValueChange={(value) => handleSelectChange('alcoholUse', value)}
                     className="flex flex-col space-y-1"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="No" id="alcohol-no" />
-                      <Label htmlFor="alcohol-no" className="text-sm cursor-pointer">No</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Occasional" id="alcohol-occasional" />
-                      <Label htmlFor="alcohol-occasional" className="text-sm cursor-pointer">Occasional</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Regular" id="alcohol-regular" />
-                      <Label htmlFor="alcohol-regular" className="text-sm cursor-pointer">Regular</Label>
-                    </div>
+                    {alcoholUseOptions.map((status) => (
+                      <div key={status} className="flex items-center space-x-2">
+                        <RadioGroupItem value={status} id={`alcohol-${status.toLowerCase()}`} />
+                        <Label 
+                          htmlFor={`alcohol-${status.toLowerCase()}`} 
+                          className="text-sm cursor-pointer"
+                        >
+                          {status}
+                        </Label>
+                      </div>
+                    ))}
                   </RadioGroup>
                 </div>
                 
