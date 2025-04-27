@@ -983,3 +983,10 @@ const PatientRegistration = () => {
               )}
             </Button>
           </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default PatientRegistration;
