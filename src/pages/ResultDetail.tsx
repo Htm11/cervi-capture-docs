@@ -143,6 +143,10 @@ const ResultDetail = () => {
         medicalHistory = medicalHistoryData as unknown as MedicalHistoryData;
       }
 
+      // Debug logs to help diagnose the issue
+      console.log('Medical history object:', medicalHistory);
+      console.log('Lifestyle data:', medicalHistory.lifestyle);
+      
       return (
         <div className="space-y-6">
           <div className="space-y-4">
