@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Calendar, Phone, Trash2, Download, Image } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -167,6 +167,34 @@ const Results = () => {
     }
   };
 
+  const ImageThumbnail = ({ imageUrl, altText }: { imageUrl?: string; altText: string }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    if (!imageUrl || imageError) {
+      return (
+        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+          <Image className="h-6 w-6 text-gray-400" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={imageUrl}
+        alt={altText}
+        className={`w-16 h-16 object-cover rounded-lg transition-opacity ${
+          imageLoading ? 'opacity-50' : 'opacity-100'
+        }`}
+        onError={() => {
+          setImageError(true);
+          setImageLoading(false);
+        }}
+        onLoad={() => setImageLoading(false)}
+      />
+    );
+  };
+
   return (
     <Layout>
       <div className="w-full max-w-3xl mx-auto">
@@ -214,37 +242,74 @@ const Results = () => {
                 className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
                 onClick={() => handleResultClick(result)}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-medium">
-                      {result.patients?.unique_id || 'No ID'}
-                    </h3>
-                    <div className="flex items-center text-sm text-muted-foreground mt-1">
-                      <Phone className="h-3 w-3 mr-1" />
-                      <span>{result.patients?.contact_number || 'No phone number'}</span>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-medium">
+                          {result.patients?.unique_id || 'No ID'}
+                        </h3>
+                        <div className="flex items-center text-sm text-muted-foreground mt-1">
+                          <Phone className="h-3 w-3 mr-1" />
+                          <span>{result.patients?.contact_number || 'No phone number'}</span>
+                        </div>
+                      </div>
+                      
+                      {result.result === 'positive' ? (
+                        <div className="flex items-center text-red-500 bg-red-50 py-1 px-2 rounded">
+                          <XCircle className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-medium">Positive</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-green-500 bg-green-50 py-1 px-2 rounded">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-medium">Negative</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Image previews section */}
+                    {(result.before_image_url || result.after_image_url || result.image_url) && (
+                      <div className="flex gap-2 mb-3">
+                        {result.before_image_url && (
+                          <div className="flex flex-col items-center">
+                            <ImageThumbnail 
+                              imageUrl={result.before_image_url} 
+                              altText="Before screening" 
+                            />
+                            <span className="text-xs text-gray-500 mt-1">Before</span>
+                          </div>
+                        )}
+                        {result.after_image_url && (
+                          <div className="flex flex-col items-center">
+                            <ImageThumbnail 
+                              imageUrl={result.after_image_url} 
+                              altText="After screening" 
+                            />
+                            <span className="text-xs text-gray-500 mt-1">After</span>
+                          </div>
+                        )}
+                        {result.image_url && !result.before_image_url && !result.after_image_url && (
+                          <div className="flex flex-col items-center">
+                            <ImageThumbnail 
+                              imageUrl={result.image_url} 
+                              altText="Screening image" 
+                            />
+                            <span className="text-xs text-gray-500 mt-1">Image</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      <span>
+                        {result.created_at 
+                          ? format(new Date(result.created_at), 'MMM d, yyyy') 
+                          : 'Date not available'}
+                      </span>
                     </div>
                   </div>
-                  
-                  {result.result === 'positive' ? (
-                    <div className="flex items-center text-red-500 bg-red-50 py-1 px-2 rounded">
-                      <XCircle className="h-4 w-4 mr-1" />
-                      <span className="text-xs font-medium">Positive</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center text-green-500 bg-green-50 py-1 px-2 rounded">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      <span className="text-xs font-medium">Negative</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center text-xs text-muted-foreground mt-2">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  <span>
-                    {result.created_at 
-                      ? format(new Date(result.created_at), 'MMM d, yyyy') 
-                      : 'Date not available'}
-                  </span>
                 </div>
                 
                 <Button
